@@ -13,7 +13,12 @@
         </div>
         <div>
           <label class="label">Password</label>
-          <input v-model="form.password" type="password" class="input" autocomplete="new-password" />
+          <input
+            v-model="form.password"
+            type="password"
+            class="input"
+            autocomplete="new-password"
+          />
         </div>
         <button class="btn-primary w-full">Sign up</button>
       </form>
@@ -30,15 +35,30 @@ const router = useRouter()
 const auth = useAuthStore()
 const ui = useUiStore()
 
-const form = reactive({ username:'', email:'', password:'' })
+const form = reactive({ username: '', email: '', password: '' })
 
 async function onSubmit() {
   try {
     await auth.signup(form)
-    ui.pushToast({ type:'success', message:'Account created' })
+    ui.pushToast({ type: 'success', message: 'Account created' })
     router.push('/')
-  } catch (e:any) {
-    ui.pushToast({ type:'error', message: e.message })
+  } catch (e: any) {
+    let errorMessage = 'An unknown error occurred. Please try again.'
+    if (e.message) {
+      // Zod 유효성 검사 오류 메시지 파싱
+      try {
+        const zodErrors = JSON.parse(e.message)
+        if (Array.isArray(zodErrors) && zodErrors[0]?.message) {
+          errorMessage = zodErrors[0].message
+        } else {
+          errorMessage = e.message
+        }
+      } catch (jsonError) {
+        // JSON 파싱 실패 시 원본 메시지 사용 (예: "Username already exists")
+        errorMessage = e.message
+      }
+    }
+    ui.pushToast({ type: 'error', message: errorMessage })
   }
 }
 </script>

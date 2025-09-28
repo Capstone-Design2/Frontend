@@ -1,13 +1,25 @@
 <template>
   <header class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
     <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-      <RouterLink to="/" class="flex items-center gap-2">
-        <div class="h-6 w-6 rounded bg-[hsl(var(--primary))]"></div>
-        <span class="font-semibold">CAPSLOCK</span>
-      </RouterLink>
+      <!-- Left Section: Logo and Nav Links -->
+      <div class="flex items-center gap-8">
+        <RouterLink to="/" class="flex flex-shrink-0 items-center gap-2">
+          <div class="h-6 w-6 rounded bg-[hsl(var(--primary))]"></div>
+          <span class="font-semibold">CAPSLOCK</span>
+        </RouterLink>
+        <nav class="hidden items-center gap-6 md:flex">
+          <RouterLink class="text-slate-300 hover:text-white" to="/">Dashboard</RouterLink>
+          <RouterLink class="text-slate-300 hover:text-white" to="/strategies"
+            >Strategies</RouterLink
+          >
+          <RouterLink class="text-slate-300 hover:text-white" to="/backtest/run"
+            >Backtest</RouterLink
+          >
+        </nav>
+      </div>
 
       <!-- 검색창 -->
-      <div class="relative hidden flex-grow items-center justify-center md:flex">
+      <div class="relative hidden flex-1 items-center justify-center px-8 md:flex">
         <form @submit.prevent="searchSymbol" class="relative w-full max-w-md">
           <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
             <svg
@@ -65,22 +77,23 @@
         </form>
       </div>
 
-      <nav class="hidden items-center gap-6 md:flex">
-        <RouterLink class="text-slate-300 hover:text-white" to="/">Dashboard</RouterLink>
-        <RouterLink class="text-slate-300 hover:text-white" to="/strategies">Strategies</RouterLink>
-        <RouterLink class="text-slate-300 hover:text-white" to="/backtest/run">Backtest</RouterLink>
-        <RouterLink class="text-slate-300 hover:text-white" to="/mypage">My Page</RouterLink>
-      </nav>
-      <div class="flex items-center gap-3">
-        <button class="btn-outline" @click="ui.toggleKillSwitch()">
+      <!-- Right Section: Actions and User -->
+      <div class="flex flex-shrink-0 items-center gap-4">
+        <button class="btn-outline hidden sm:block" @click="ui.toggleKillSwitch()">
           <span :class="ui.killSwitch ? 'text-danger' : 'text-slate-300'">Kill Switch</span>
         </button>
         <template v-if="auth.isAuthed">
-          <span class="hidden text-sm text-slate-300 md:block">Hi, {{ auth.user?.username }}</span>
+          <RouterLink
+            to="/mypage"
+            class="hidden cursor-pointer text-sm text-slate-300 hover:text-white md:block"
+            title="마이페이지로 이동"
+          >
+            Hi, {{ auth.user?.username }}
+          </RouterLink>
           <button class="btn-primary" @click="onLogout">Logout</button>
         </template>
         <template v-else>
-          <RouterLink class="btn-outline" to="/login">Login</RouterLink>
+          <RouterLink class="btn-outline hidden sm:block" to="/login">Login</RouterLink>
           <RouterLink class="btn-primary" to="/signup">Sign up</RouterLink>
         </template>
       </div>

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { loginApi, signupApi, meApi } from '@/mock/api'
+import { loginApi, signupApi, meApi, updateUserApi } from '@/mock/api'
 
 export interface User {
   id: string
@@ -34,6 +34,13 @@ export const useAuthStore = defineStore('auth', {
       const u = await meApi(token)
       this.user = u
       localStorage.setItem(USER_KEY, JSON.stringify(u))
+    },
+
+    async updateUser(payload: { username: string; email: string }) {
+      if (!this.user) throw new Error('User not authenticated')
+      const updatedUser = await updateUserApi(this.user.id, payload)
+      this.user = updatedUser
+      localStorage.setItem(USER_KEY, JSON.stringify(updatedUser))
     },
 
     logout() {
