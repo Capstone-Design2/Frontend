@@ -51,23 +51,26 @@
       </div>
     </section>
     <aside class="lg:col-span-3">
-      <div class="card p-4">
-        <div class="mb-3 flex items-center justify-between">
-          <h3 class="font-medium">Market Overview</h3>
-          <button class="text-xs text-slate-400 hover:text-slate-200" @click="reload">
-            Reload
-          </button>
-        </div>
-        <div class="space-y-2">
-          <MiniTicker
-            v-for="t in market.miniTickers"
-            :key="t.key"
-            :title="t.key"
-            :data="t.series"
-          />
-          <p class="text-xs text-slate-500">
-            Some indices like KOSPI/KOSDAQ/DXY are not directly supported by Alpha Vantage.
-          </p>
+      <div class="space-y-6">
+        <TradeWidget />
+        <div class="card p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="font-medium">Market Overview</h3>
+            <button class="text-xs text-slate-400 hover:text-slate-200" @click="reload">
+              Reload
+            </button>
+          </div>
+          <div class="space-y-2">
+            <MiniTicker
+              v-for="t in market.miniTickers"
+              :key="t.key"
+              :title="t.key"
+              :data="t.series"
+            />
+            <p class="text-xs text-slate-500">
+              Some indices like KOSPI/KOSDAQ/DXY are not directly supported by Alpha Vantage.
+            </p>
+          </div>
         </div>
       </div>
     </aside>
@@ -80,6 +83,7 @@ import PriceChart from '@/components/Chart/PriceChart.vue'
 import OverlayCanvas from '@/components/Chart/OverlayCanvas.vue'
 import ChartToolbar from '@/components/Chart/ChartToolbar.vue'
 import MiniTicker from '@/components/Sidebar/MiniTicker.vue'
+import TradeWidget from '@/components/Sidebar/TradeWidget.vue'
 import { useMarketStore } from '@/stores/useMarketStore'
 import { getDaily, getIntraday } from '@/services/alphaVantage'
 
