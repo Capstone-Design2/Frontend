@@ -42,7 +42,7 @@ npm install
 npm run dev
 ```
 
-3. Tests
+4. **Tests**
 
 ```bash
 npm run test:unit
