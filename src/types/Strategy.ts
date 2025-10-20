@@ -1,7 +1,7 @@
 export interface Strategy {
   schemaVersion: 1
-  id?: string
-  name: string
+  strategy_id?: number | string
+  strategy_name: string
   description?: string
   indicators: {
     sma?: { enabled: boolean; period: number }

@@ -15,7 +15,7 @@ app.use(router)
 
 // Pinia 스토어 생성 후 상태 복원
 useAuthStore().restore()
-useStrategyStore().restore()
+
 useBacktestStore().restore()
 
 app.mount('#app')

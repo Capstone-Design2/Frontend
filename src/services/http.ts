@@ -2,13 +2,13 @@ import axios, { isAxiosError } from 'axios'
 import { useAuthStore } from '@/stores/useAuthStore'
 import router from '@/router'
 
-export const http = axios.create({ baseURL: '/' })
+export const http = axios.create({ baseURL: 'http://localhost:8000/caps_lock' })
 
 http.interceptors.request.use((config) => {
   // Pinia 스토어는 플러그인이 설치된 후에만 사용할 수 있으므로,
   // 인터셉터 함수 내에서 스토어를 가져오는 것이 안전합니다.
   const { token } = useAuthStore()
-  if (token) config.headers = { ...config.headers, Authorization: `Bearer ${token}` }
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
