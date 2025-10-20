@@ -9,15 +9,31 @@
       </RouterLink>
     </div>
     <h1 class="mb-4 text-xl font-semibold">Edit Strategy</h1>
-    <RuleBuilder v-if="model" :model-value="model" @save="onSave" />
+
+    <form v-if="model" @submit.prevent="onSave" class="space-y-4">
+      <div class="card p-4">
+        <div>
+          <label for="name" class="label">Strategy Name</label>
+          <input id="name" v-model="model.strategy_name" class="input" required />
+        </div>
+        <div class="mt-4">
+          <label for="desc" class="label">Description</label>
+          <input id="desc" v-model="model.description" class="input" />
+        </div>
+      </div>
+      <div class="flex justify-end">
+        <button type="submit" class="btn-primary">Save Changes</button>
+      </div>
+    </form>
+    
     <div v-else class="card p-6 text-center text-slate-400">Loading strategy data...</div>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter, RouterLink } from 'vue-router'
-import RuleBuilder from '@/components/Strategy/RuleBuilder.vue'
+import { ref, onMounted } from 'vue'
+import { useRouter, RouterLink } from 'vue-router'
 import { useStrategyStore } from '@/stores/useStrategyStore'
 import type { Strategy } from '@/types/Strategy'
 
@@ -25,24 +41,37 @@ const props = defineProps<{ id: string | number }>()
 const router = useRouter()
 const strategyStore = useStrategyStore()
 
-// Create a ref for the model to avoid directly mutating the store's state via RuleBuilder
-const model = ref<Strategy | null>(null)
+const model = ref<Partial<Strategy> | null>(null)
 
-// Fetch strategies if not already in the store
 onMounted(async () => {
-  if (strategyStore.strategies.length === 0) {
-    await strategyStore.fetchStrategies()
-  }
-  // Find the specific strategy and clone it for local editing
-  const strategyToEdit = strategyStore.strategies.find((s) => s.strategy_id == props.id)
-  if (strategyToEdit) {
-    model.value = JSON.parse(JSON.stringify(strategyToEdit)) // Deep copy
+  const fetchedStrategy = await strategyStore.fetchStrategyById(props.id)
+  if (fetchedStrategy) {
+    model.value = { ...fetchedStrategy }
   }
 })
 
-async function onSave(payload: any) {
-  if (!model.value?.strategy_id) return
-  await strategyStore.update(model.value.strategy_id, payload)
-  router.push({ name: 'strategies' })
+async function onSave() {
+  console.log('Save button clicked. Current model:', model.value);
+
+  if (!model.value?.strategy_id) {
+    console.error('Strategy ID is missing. Cannot save.');
+    return;
+  }
+
+  const updatePayload = {
+    strategy_name: model.value.strategy_name,
+    description: model.value.description,
+  }
+
+  console.log('Calling store.update with payload:', updatePayload);
+
+  try {
+    await strategyStore.update(model.value.strategy_id, updatePayload)
+    console.log('Update successful!');
+    router.push({ name: 'strategies-detail', params: { id: model.value.strategy_id } })
+  } catch (error) {
+    console.error('An error occurred during save:', error);
+    // You can add a user-facing error message here, e.g., using a toast notification.
+  }
 }
 </script>

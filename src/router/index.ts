@@ -40,8 +40,9 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: ':id/edit', // '/strategies/:id/edit' 경로에 해당합니다.
-        name: 'strategies-edit',
+        name: 'strategies-edit', 
         component: StrategiesEdit,
+        props: true,
       },
     ],
   },

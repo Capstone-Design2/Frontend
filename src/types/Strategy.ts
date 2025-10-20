@@ -1,5 +1,5 @@
 export interface Strategy {
-  schemaVersion: 1
+  schemaVersion?: 1
   strategy_id?: number | string
   strategy_name: string
   description?: string
@@ -10,6 +10,6 @@ export interface Strategy {
     macd?: { enabled: boolean; fast: number; slow: number; signal: number }
     bbands?: { enabled: boolean; period: number; dev: number }
   }
-  rules: { buy: string[]; sell: string[]; stopLoss?: number; takeProfit?: number }
-  positionSizing: { mode: 'fixed'|'percent'; value: number }
+  rules: { buy: string[]; sell: string[]; stop_loss?: number; take_profit?: number }
+  position_sizing: { mode: 'fixed'|'percent'; value: number }
 }
