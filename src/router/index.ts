@@ -1,9 +1,9 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
-const Dashboard = () => import('@/pages/Dashboard.vue')
-const Login = () => import('@/pages/Login.vue')
-const Signup = () => import('@/pages/Signup.vue')
-const MyPage = () => import('@/pages/MyPage.vue')
+const Dashboard = () => import('@/pages/DashboardView.vue')
+const Login = () => import('@/pages/LoginView.vue')
+const Signup = () => import('@/pages/SignupView.vue')
+const MyPage = () => import('@/pages/MyPageView.vue')
 const NotFound = () => import('@/pages/NotFound.vue')
 
 const StrategiesList = () => import('@/pages/Strategies/List.vue')
@@ -40,7 +40,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: ':id/edit', // '/strategies/:id/edit' 경로에 해당합니다.
-        name: 'strategies-edit', 
+        name: 'strategies-edit',
         component: StrategiesEdit,
         props: true,
       },

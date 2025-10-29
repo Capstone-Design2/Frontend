@@ -1,11 +1,5 @@
 import { defineStore } from 'pinia'
-import { loginApi, signupApi, meApi, updateUserApi } from '@/mock/api'
-
-export interface User {
-  id: string
-  email: string
-  username: string
-}
+import { loginApi, signupApi, meApi, updateUserApi, type User } from '@/services/authApi'
 
 interface State {
   user: User | null
@@ -20,23 +14,25 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isAuthed: (s) => !!s.token,
   },
-
   actions: {
-    async signup(payload: { username: string; email: string; password: string }) {
+    async signup(payload: { email: string; name: string; password: string }) {
       await signupApi(payload)
-      return this.login({ username: payload.username, password: payload.password })
+      return this.login({ username: payload.name, password: payload.password })
     },
 
     async login(payload: { username: string; password: string }) {
+      // 1) 로그인 → 토큰 획득
       const { token } = await loginApi(payload)
       this.token = token
       localStorage.setItem(TOKEN_KEY, token)
-      const u = await meApi(token)
+
+      // 2) 내 정보 조회
+      const u = await meApi()
       this.user = u
       localStorage.setItem(USER_KEY, JSON.stringify(u))
     },
 
-    async updateUser(payload: { username: string; email: string }) {
+    async updateUser(payload: { name: string; email: string }) {
       if (!this.user) throw new Error('User not authenticated')
       const updatedUser = await updateUserApi(this.user.id, payload)
       this.user = updatedUser
@@ -54,7 +50,7 @@ export const useAuthStore = defineStore('auth', {
       const token = localStorage.getItem(TOKEN_KEY)
       const userRaw = localStorage.getItem(USER_KEY)
       if (token) this.token = token
-      if (userRaw) this.user = JSON.parse(userRaw)
+      if (userRaw) this.user = JSON.parse(userRaw) as User
     },
   },
 })
