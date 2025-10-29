@@ -1,36 +1,83 @@
 import { defineStore } from 'pinia'
 import type { Strategy } from '@/types/Strategy'
-import { migrateStrategy, STRATEGY_SCHEMA_VERSION, strategySchema } from '@/utils/validation'
-
-const KEY = 'strategies.v1'
+import { getStrategies, createStrategy, updateStrategy, deleteStrategy, getStrategyById } from '@/services/strategy/strategyApi'
 
 export const useStrategyStore = defineStore('strategies', {
-  state: () => ({ strategies: [] as Strategy[] }),
+  state: () => ({
+    strategies: [] as Strategy[],
+    isLoading: false,
+  }),
   actions: {
-    restore() {
-      const raw = localStorage.getItem(KEY)
-      if (!raw) return
+    async fetchStrategies() {
+      this.isLoading = true
       try {
-        const arr = JSON.parse(raw)
-        this.strategies = (arr as any[]).map((s) => migrateStrategy(s))
-      } catch { this.strategies = [] }
-    },
-    persist() { localStorage.setItem(KEY, JSON.stringify(this.strategies)) },
-    create(s: Strategy) {
-      const parsed = strategySchema.parse(s)
-      const item: Strategy = { ...parsed, schemaVersion: STRATEGY_SCHEMA_VERSION, id: crypto.randomUUID() }
-      this.strategies.push(item); this.persist()
-    },
-    update(id: string, patch: Partial<Strategy>) {
-      const idx = this.strategies.findIndex(s => s.id === id)
-      if (idx !== -1) {
-        const merged = { ...this.strategies[idx], ...patch }
-        const parsed = strategySchema.parse(merged)
-        this.strategies[idx] = parsed
-        this.persist()
+        this.strategies = await getStrategies()
+      } catch (error) {
+        console.error('Failed to fetch strategies:', error)
+      } finally {
+        this.isLoading = false
       }
     },
-    remove(id: string) { this.strategies = this.strategies.filter(s => s.id !== id); this.persist() },
-    byId(id: string) { return this.strategies.find(s => s.id === id) }
+
+    async fetchStrategyById(id: string | number) {
+      this.isLoading = true
+      try {
+        const fetchedStrategy = await getStrategyById(id as string)
+        const index = this.strategies.findIndex(s => s.strategy_id === fetchedStrategy.strategy_id)
+        if (index !== -1) {
+          this.strategies[index] = fetchedStrategy
+        } else {
+          this.strategies.push(fetchedStrategy)
+        }
+        return fetchedStrategy;
+      } catch (error) {
+        console.error(`Failed to fetch strategy with id ${id}:`, error)
+        throw error;
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async create(s: Partial<Strategy>) {
+      this.isLoading = true
+      try {
+        const newStrategy = await createStrategy(s)
+        this.strategies.push(newStrategy)
+      } catch (error) {
+        console.error('Failed to create strategy:', error)
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async update(id: string | number, patch: Partial<Strategy>) {
+      this.isLoading = true
+      try {
+        const updatedStrategy = await updateStrategy(id, patch)
+        const index = this.strategies.findIndex(s => s.strategy_id === updatedStrategy.strategy_id)
+        if (index !== -1) {
+          this.strategies[index] = updatedStrategy
+        }
+      } catch (error) {
+        console.error('Failed to update strategy:', error)
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async remove(id: string | number) {
+      this.isLoading = true
+      try {
+        await deleteStrategy(id)
+        this.strategies = this.strategies.filter(s => s.strategy_id !== id)
+      } catch (error) {
+        console.error('Failed to delete strategy:', error)
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
   }
 })

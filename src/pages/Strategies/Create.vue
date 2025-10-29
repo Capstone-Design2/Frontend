@@ -4,6 +4,7 @@
     <RuleBuilder @save="onSave" />
   </div>
 </template>
+
 <script setup lang="ts">
 import RuleBuilder from '@/components/Strategy/RuleBuilder.vue'
 import { useStrategyStore } from '@/stores/useStrategyStore'
@@ -12,8 +13,14 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const strategies = useStrategyStore()
 
-function onSave(payload: any) {
-  strategies.create(payload)
-  router.push('/strategies')
+async function onSave(payload: any) {
+  try {
+    await strategies.create(payload)
+    // 성공적으로 생성되면 목록 페이지로 이동합니다.
+    router.push('/strategies')
+  } catch (error) {
+    // 에러 발생 시 사용자에게 알림을 표시할 수 있습니다.
+    console.error("Failed to save strategy:", error)
+  }
 }
 </script>

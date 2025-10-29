@@ -18,7 +18,7 @@
         </nav>
       </div>
 
-      <!-- 검색창 -->
+      <!-- Search -->
       <div class="relative hidden flex-1 items-center justify-center px-8 md:flex">
         <form @submit.prevent="searchSymbol" class="relative w-full max-w-md">
           <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -35,18 +35,24 @@
               />
             </svg>
           </div>
+          <!-- input: 키보드 숏컷/조합 이벤트는 기존 그대로 유지 -->
           <input
             id="symbol-search-nav"
             v-model="searchQuery"
             type="search"
-            class="input w-full bg-slate-900/80 pl-10"
+            class="input w-full bg-slate-900/80 pl-10 pr-9"
             placeholder="Search symbol..."
             autocomplete="off"
             @input="onSearchInput"
+            @compositionstart="onCompositionStart"
+            @compositionend="onCompositionEnd"
             @blur="hideSuggestions"
             @keydown.down.prevent="onArrowDown"
             @keydown.up.prevent="onArrowUp"
             @keydown.enter.prevent="onEnter"
+            aria-autocomplete="list"
+            :aria-expanded="showSuggestions"
+            role="combobox"
           />
           <div
             v-if="showSuggestions"
@@ -56,20 +62,16 @@
             <ul v-else-if="suggestions.length > 0">
               <li
                 v-for="(s, index) in suggestions"
-                :key="s.symbol"
-                :ref="
-                  (el) => {
-                    if (el) itemRefs[index] = el
-                  }
-                "
+                :key="s.rawSymbol || s.symbol"
+                :ref="setItemRef(index)"
                 :class="[
                   'cursor-pointer px-4 py-2 text-sm hover:bg-slate-700',
                   { 'bg-slate-700': index === highlightedIndex },
                 ]"
                 @mousedown="selectSuggestion(s)"
               >
-                <span class="font-bold">{{ s.symbol }}</span> -
-                <span class="text-slate-400">{{ s.name }}</span>
+                <span class="font-bold">{{ s.name }}</span>
+                <span class="text-slate-400"> — {{ s.symbol }}</span>
               </li>
             </ul>
             <div v-else class="px-4 py-2 text-sm text-slate-400">No results found.</div>
@@ -77,7 +79,7 @@
         </form>
       </div>
 
-      <!-- Right Section: Actions and User -->
+      <!-- Right Section -->
       <div class="flex flex-shrink-0 items-center gap-4">
         <button class="btn-outline hidden sm:block" @click="ui.toggleKillSwitch()">
           <span :class="ui.killSwitch ? 'text-danger' : 'text-slate-300'">Kill Switch</span>
@@ -102,12 +104,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onBeforeUpdate, nextTick } from 'vue'
+import { ref, onBeforeUpdate, nextTick } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useUiStore } from '@/stores/useUiStore'
 import { useMarketStore } from '@/stores/useMarketStore'
-import { searchSymbols, type SymbolSearchResult } from '@/services/alphaVantage'
+import { searchSymbolsUdf, type SymbolSearchItem } from '@/services/tvSymbolApi.ts'
+
+defineOptions({ name: 'AppNavbar' })
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -115,14 +119,16 @@ const ui = useUiStore()
 const market = useMarketStore()
 
 const searchQuery = ref('')
-const suggestions = ref<SymbolSearchResult[]>([])
+const selectedSymbol = ref<string | null>(null)
+const suggestions = ref<SymbolSearchItem[]>([])
 const showSuggestions = ref(false)
 const isSearching = ref(false)
 const highlightedIndex = ref(-1)
-const itemRefs = ref<HTMLLIElement[]>([])
+const itemRefs = ref<Array<HTMLLIElement | null>>([])
 let searchTimeout: number | undefined
 
-// suggestions가 변경될 때마다 itemRefs 배열을 초기화합니다.
+const isComposing = ref(false)
+
 onBeforeUpdate(() => {
   itemRefs.value = []
 })
@@ -134,54 +140,102 @@ function onLogout() {
 }
 
 function searchSymbol() {
-  const newSymbol = searchQuery.value.trim().toUpperCase()
-  if (!newSymbol) return
+  const typed = searchQuery.value.trim()
+  if (!typed) return
 
-  const isValidSymbol = suggestions.value.some((s) => s.symbol === newSymbol)
+  let symbol = selectedSymbol.value
 
-  if (showSuggestions.value && suggestions.value.length > 0 && !isValidSymbol) {
-    alert('Please select a valid symbol from the list.')
+  // 제안 목록에서 코드 매칭 시도 (사용자가 직접 코드로 입력한 경우 포함)
+  if (!symbol) {
+    const upper = typed.toUpperCase()
+    const hit = suggestions.value.find((s) =>
+      [s.rawSymbol, s.symbol].filter(Boolean).some((v) => v!.toUpperCase() === upper),
+    )
+    if (hit) symbol = hit.rawSymbol ?? hit.symbol
+  }
+
+  // 그래도 없으면 "코드처럼 보이는" 직접입력 허용 (예: KRX:005930, 005930.KS)
+  if (!symbol && /^[A-Za-z0-9:.]+$/.test(typed)) {
+    symbol = typed.toUpperCase()
+  }
+
+  if (!symbol) {
+    ui.pushToast({ type: 'error', message: '목록에서 종목을 선택하거나 코드로 입력하세요.' })
     return
   }
 
-  market.setSymbol(newSymbol)
+  market.setSymbol(symbol)
   showSuggestions.value = false
-  // 검색 후 대시보드 페이지가 아니라면 이동합니다.
   if (router.currentRoute.value.name !== 'dashboard') {
     router.push({ name: 'dashboard' })
   }
 }
 
+function setItemRef(index: number) {
+  return (el: Element | import('vue').ComponentPublicInstance | null) => {
+    itemRefs.value[index] = el instanceof HTMLLIElement ? el : null
+  }
+}
+
+function onCompositionStart() {
+  isComposing.value = true
+}
+
+function onCompositionEnd(e: CompositionEvent) {
+  isComposing.value = false
+  triggerSearch()
+}
+
 function onSearchInput() {
-  clearTimeout(searchTimeout)
-  if (searchQuery.value.length < 2) {
+  if (isComposing.value) return
+  selectedSymbol.value = null
+  triggerSearch()
+}
+
+function normalizeQuery(q: string): { q: string; minChars: number } {
+  const trimmed = q.trim()
+  if (/^[A-Za-z0-9]+$/.test(trimmed)) {
+    // 영문/숫자 → 대문자 변환, 2글자 이상부터 검색
+    return { q: trimmed.toUpperCase(), minChars: 2 }
+  }
+  // 한글/기타 유니코드 → 그대로, 1글자부터 검색 허용
+  return { q: trimmed, minChars: 1 }
+}
+
+function triggerSearch() {
+  window.clearTimeout(searchTimeout)
+  const { q, minChars } = normalizeQuery(searchQuery.value)
+
+  if (q.length < minChars) {
     showSuggestions.value = false
     highlightedIndex.value = -1
     return
   }
+
   isSearching.value = true
   showSuggestions.value = true
-  searchTimeout = setTimeout(async () => {
+
+  searchTimeout = window.setTimeout(async () => {
     try {
-      suggestions.value = await searchSymbols(searchQuery.value.toUpperCase())
-    } catch (error) {
-      console.error('Symbol search failed:', error)
+      suggestions.value = await searchSymbolsUdf(q, 20)
+    } catch {
       suggestions.value = []
     } finally {
       highlightedIndex.value = -1
       isSearching.value = false
     }
-  }, 300)
+  }, 250)
 }
 
-function selectSuggestion(suggestion: SymbolSearchResult) {
-  searchQuery.value = suggestion.symbol
+function selectSuggestion(suggestion: SymbolSearchItem) {
+  searchQuery.value = suggestion.name
+  selectedSymbol.value = suggestion.rawSymbol ?? suggestion.symbol
   showSuggestions.value = false
   searchSymbol()
 }
 
 function hideSuggestions() {
-  setTimeout(() => {
+  window.setTimeout(() => {
     showSuggestions.value = false
     highlightedIndex.value = -1
   }, 200)
@@ -198,6 +252,7 @@ async function onArrowUp() {
   if (suggestions.value.length === 0) return
   highlightedIndex.value =
     (highlightedIndex.value - 1 + suggestions.value.length) % suggestions.value.length
+
   await nextTick()
   itemRefs.value[highlightedIndex.value]?.scrollIntoView({ block: 'nearest' })
 }
@@ -205,6 +260,8 @@ async function onArrowUp() {
 function onEnter() {
   if (highlightedIndex.value !== -1) {
     selectSuggestion(suggestions.value[highlightedIndex.value])
+  } else if (suggestions.value[0]) {
+    selectSuggestion(suggestions.value[0])
   } else {
     searchSymbol()
   }

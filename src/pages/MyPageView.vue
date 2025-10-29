@@ -62,7 +62,11 @@
                 <td class="px-4 py-2 text-right">{{ pos.quantity }}</td>
                 <td class="px-4 py-2 text-right">${{ pos.averagePrice.toFixed(2) }}</td>
                 <td class="px-4 py-2 text-right">
-                  ${{ (pos.quantity * pos.averagePrice).toLocaleString() }}
+                  ${{
+                    (
+                      pos.quantity * (portfolioStore.markPrices[pos.symbol] ?? pos.averagePrice)
+                    ).toLocaleString()
+                  }}
                 </td>
               </tr>
             </tbody>
@@ -120,16 +124,21 @@
       <form @submit.prevent="onSave" class="space-y-4">
         <div>
           <label for="username" class="label">Username</label>
-          <input id="username" v-model="form.username" class="input w-full" />
+          <input id="username" v-model="form.username" class="input w-full" required />
         </div>
         <div>
           <label for="email" class="label">Email</label>
-          <input id="email" v-model="form.email" type="email" class="input w-full" />
+          <input id="email" v-model="form.email" type="email" class="input w-full" required />
         </div>
       </form>
       <template #footer>
-        <button type="button" @click="onCancel" class="btn-outline">Cancel</button>
-        <button type="button" @click="onSave" class="btn-primary">Save</button>
+        <button type="button" @click="onCancel" class="btn-outline" :disabled="saving">
+          Cancel
+        </button>
+        <button type="button" @click="onSave" class="btn-primary" :disabled="saving">
+          <span v-if="saving">Saving...</span>
+          <span v-else>Save</span>
+        </button>
       </template>
     </Modal>
   </div>
@@ -142,15 +151,15 @@ import { usePortfolioStore } from '@/stores/usePortfolioStore'
 import { useUiStore } from '@/stores/useUiStore'
 import Modal from '@/components/Common/Modal.vue'
 
+defineOptions({ name: 'MyPageView' }) // multi-word name
+
 const auth = useAuthStore()
 const portfolioStore = usePortfolioStore()
 const ui = useUiStore()
 
 const showEditModal = ref(false)
-const form = reactive({
-  username: '',
-  email: '',
-})
+const saving = ref(false)
+const form = reactive({ username: '', email: '' })
 
 function syncFormWithStore() {
   if (auth.user) {
@@ -159,29 +168,38 @@ function syncFormWithStore() {
   }
 }
 
-watch(
-  showEditModal,
-  (isShown) => {
-    if (isShown) {
-      syncFormWithStore()
-    }
-  },
-  { immediate: true },
-)
+watch(showEditModal, (isShown) => {
+  if (isShown) syncFormWithStore()
+})
 
 function onCancel() {
   showEditModal.value = false
 }
 
+function parseErrorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    try {
+      const z = JSON.parse(err.message)
+      if (Array.isArray(z) && typeof z[0]?.message === 'string') return z[0].message
+    } catch {
+      /* ignore */
+    }
+    return err.message || 'Failed to update profile.'
+  }
+  return 'Failed to update profile.'
+}
+
 async function onSave() {
   if (!auth.user) return
-
+  saving.value = true
   try {
-    await auth.updateUser(form)
+    await auth.updateUser({ name: form.username, email: form.email })
     ui.pushToast({ type: 'success', message: 'Profile updated successfully!' })
     showEditModal.value = false
-  } catch (e: any) {
-    ui.pushToast({ type: 'error', message: e.message || 'Failed to update profile.' })
+  } catch (err: unknown) {
+    ui.pushToast({ type: 'error', message: parseErrorMessage(err) })
+  } finally {
+    saving.value = false
   }
 }
 </script>
