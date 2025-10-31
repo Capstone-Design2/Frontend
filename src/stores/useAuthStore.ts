@@ -16,8 +16,7 @@ export const useAuthStore = defineStore('auth', {
   },
   actions: {
     async signup(payload: { email: string; name: string; password: string }) {
-      await signupApi(payload)
-      return this.login({ username: payload.name, password: payload.password })
+      return await signupApi(payload)
     },
 
     async login(payload: { username: string; password: string }) {

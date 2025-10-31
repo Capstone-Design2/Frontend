@@ -4,7 +4,7 @@
       <h1 class="mb-4 text-xl font-semibold">Login</h1>
       <form @submit.prevent="onSubmit" class="space-y-3">
         <div>
-          <label class="label" for="username">Username</label>
+          <label class="label" for="username">UserEmail</label>
           <input id="username" v-model="username" class="input" autocomplete="username" required />
         </div>
         <div>
