@@ -3,15 +3,34 @@
     <section class="lg:col-span-9">
       <div class="card relative overflow-hidden p-4">
         <div class="mb-3 flex items-center justify-between">
-          <div>
-            <h1 class="text-xl font-semibold">
-              {{ displayName }} <span class="ml-2 text-slate-400 text-sm">{{ market.symbol }}</span>
-              <span class="ml-2 text-sm text-slate-400">{{ priceLabel }}</span>
-            </h1>
-            <p class="text-sm text-slate-400">
-              Historical via /tradingview/history · live via WS (coming soon)
-            </p>
+          <!-- 헤더: 좌측 정보 -->
+          <div class="space-y-1.5">
+            <!-- 1) 이름 + 코드 -->
+            <div class="flex items-baseline gap-2">
+              <h1 class="text-xl font-semibold leading-none">{{ displayName }}</h1>
+              <span class="text-sm text-slate-400">{{ symbolCode }}</span>
+            </div>
+
+            <!-- 2) 가격 + 등락/등락률 -->
+            <div class="flex items-center gap-3">
+              <span class="text-2xl font-semibold tabular-nums" :class="priceColorClass">
+                {{ priceLabel }}
+              </span>
+
+              <span
+                v-if="hasChange"
+                class="rounded-md px-2 py-0.5 text-xs font-medium tabular-nums"
+                :class="chipColorClass"
+              >
+                {{ changePrefix }}{{ changeAbsLabel }} ({{ changePctLabel }})
+              </span>
+            </div>
+
+            <!-- 3) 소스 -->
+            <p class="text-sm text-slate-400">데이터: 한국투자증권 · WebSocket: 준비 중</p>
           </div>
+
+          <!-- 헤더: 우측 툴바 -->
           <ChartToolbar v-model="timeframe" v-model:toolValue="tool" @clear="onClear" />
         </div>
 
@@ -27,6 +46,12 @@
           </template>
           <div v-else class="flex h-full items-center justify-center text-slate-400">
             Loading chart data...
+          </div>
+          <div
+            class="pointer-events-none absolute top-[-27px] right-3 text-xs text-slate-400/70"
+            v-if="candles.length > 0"
+          >
+            업데이트 · {{ updatedAtLabel }}
           </div>
         </div>
       </div>
@@ -120,9 +145,64 @@ const priceChart = ref<InstanceType<typeof PriceChart> | null>(null)
 const candles = ref<CandlePoint[]>([])
 const displayName = ref<string>('')
 
-const priceLabel = computed(() =>
-  market.livePrice != null ? `$${market.livePrice.toFixed(2)}` : '',
+// ---- 포맷터
+const fmtKRW = (n: number) =>
+  new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW',
+    maximumFractionDigits: 0,
+  }).format(n)
+
+const priceLabel = computed(() => (market.livePrice != null ? fmtKRW(market.livePrice) : '—'))
+
+// 코드/거래소 라벨
+const symbolCode = computed(() => market.symbol ?? '')
+
+// 업데이트 시각 (마지막 캔들)
+const updatedAtLabel = computed(() => {
+  const last = candles.value[candles.value.length - 1]
+  if (!last) return '—'
+  const dt = new Date(Number(last.time) * 1000)
+  // YYYY-MM-DD HH:mm
+  const yyyy = dt.getUTCFullYear()
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(dt.getUTCDate()).padStart(2, '0')
+  const hh = String(dt.getUTCHours()).padStart(2, '0')
+  const mi = String(dt.getUTCMinutes()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi} UTC`
+})
+
+// 등락/등락률 계산
+const lastCandle = computed(() => candles.value[candles.value.length - 1])
+const prevCandle = computed(() => candles.value[candles.value.length - 2])
+
+const change = computed(() => {
+  if (!lastCandle.value || !prevCandle.value) return null
+  return lastCandle.value.close - prevCandle.value.close
+})
+const changePct = computed(() => {
+  if (!change.value || !prevCandle.value) return null
+  if (prevCandle.value.close === 0) return null
+  return (change.value / prevCandle.value.close) * 100
+})
+
+const hasChange = computed(() => change.value !== null && changePct.value !== null)
+const changePrefix = computed(() => (change.value! >= 0 ? '+' : ''))
+const changeAbsLabel = computed(() => (change.value == null ? '' : fmtKRW(Math.abs(change.value))))
+const changePctLabel = computed(() =>
+  changePct.value == null
+    ? ''
+    : `${change.value! >= 0 ? '▲' : '▼'}${Math.abs(changePct.value).toFixed(2)}%`,
 )
+
+const priceColorClass = computed(() => {
+  if (change.value == null) return 'text-slate-200'
+  return change.value >= 0 ? 'text-emerald-400' : 'text-rose-400'
+})
+const chipColorClass = computed(() => {
+  if (change.value == null) return 'bg-slate-700 text-slate-200'
+  return change.value >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+})
 
 // ---- UDF resolution 매핑
 function tfToResolution(tf: Timeframe): '1' | '5' | '15' | '60' | 'D' {
@@ -199,7 +279,7 @@ async function onLoadOlder(oldestTime: number) {
     maxPages: 3,
   })
 
-  // 1) OHLCVPoint[] -> CandlePoint[] 로 변환 (time을 UTCTimestamp로 캐스팅)
+  // 1) OHLCVPoint[] -> CandlePoint[]
   const moreCandles: CandlePoint[] = more.map((p) => ({
     time: p.time as UTCTimestamp,
     open: p.open,
@@ -209,7 +289,7 @@ async function onLoadOlder(oldestTime: number) {
     volume: p.volume ?? 0,
   }))
 
-  // 2) 병합 + 중복 제거 + 정렬 (결과 타입을 CandlePoint[]로 유지)
+  // 2) 병합 + 중복 제거 + 정렬
   const all: CandlePoint[] = [...moreCandles, ...candles.value]
 
   const seen = new Set<number>()
