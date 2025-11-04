@@ -17,7 +17,12 @@
 
         <div class="relative h-[420px]">
           <template v-if="candles.length > 0">
-            <PriceChart ref="priceChart" :data="candles" :timeframe="timeframe" />
+            <PriceChart
+              ref="priceChart"
+              :data="candles"
+              :timeframe="timeframe"
+              @load-older="onLoadOlder"
+            />
             <OverlayCanvas v-if="tool !== 'none'" :tool="tool" />
           </template>
           <div v-else class="flex h-full items-center justify-center text-slate-400">
@@ -88,7 +93,7 @@ import ChartToolbar from '@/components/Chart/ChartToolbar.vue'
 import MiniTicker from '@/components/Sidebar/MiniTicker.vue'
 import TradeWidget from '@/components/Sidebar/TradeWidget.vue'
 import { useMarketStore } from '@/stores/useMarketStore'
-import { getServerTime, getDailySeries } from '@/services/marketApi'
+import { getSeriesBackward } from '@/services/marketApi'
 import { useUiStore } from '@/stores/useUiStore'
 import { getSymbolMeta } from '@/services/tvSymbolApi'
 
@@ -135,24 +140,11 @@ function tfToResolution(tf: Timeframe): '1' | '5' | '15' | '60' | 'D' {
   }
 }
 
-// 필요 분량(캔들 개수) 추정
-function defaultLimit(tf: Timeframe): number {
-  switch (tf) {
-    case '1min':
-      return 600 // 약 하루
-    case '5min':
-      return 500
-    case '15min':
-      return 400
-    case '60min':
-      return 500
-    case '1day':
-      return 180 // 약 6개월
-  }
-}
-
 // 공통 history loader (UDF)
+let currentReq = 0 // 요청 토큰
+
 async function load(symbol: string, tf: Timeframe) {
+  const reqId = ++currentReq
   try {
     market.livePrice = null
     candles.value = []
@@ -160,35 +152,26 @@ async function load(symbol: string, tf: Timeframe) {
     const meta = await getSymbolMeta(symbol)
     displayName.value = meta?.name ?? symbol
 
-    const res = tfToResolution(tf)
-    const now = await getServerTime()
+    const resolution = tfToResolution(tf)
 
-    // 일봉은 /tradingview/history D 사용 (간단: getDailySeries 재사용)
-    if (res === 'D') {
-      const dailies = await getDailySeries(symbol, defaultLimit('1day'))
-      candles.value = dailies.map((d) => ({
-        time: d.time as UTCTimestamp,
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
-        volume: d.volume,
-      }))
-    } else {
-      // 분봉: 직접 UDF 호출 함수가 있다면 그걸 사용하도록 권장
-      // 간단 구현: from/to 계산 후 /tradingview/history 호출 전용 유틸을 만든 경우를 가정
-      // 여기서는 services에 getSeries(symbol, res, limit) 같은 헬퍼가 있다고 가정해도 됨.
-      const { getSeries } = await import('@/services/marketIntraday.ts') // <— 분봉용 유틸(간단 헬퍼)로 분리 권장
-      const points = await getSeries(symbol, res, defaultLimit(tf), now)
-      candles.value = points.map((p) => ({
-        time: p.time as UTCTimestamp,
-        open: p.open,
-        high: p.high,
-        low: p.low,
-        close: p.close,
-        volume: p.volume ?? 0,
-      }))
-    }
+    const points = await getSeriesBackward(symbol, {
+      resolution,
+      pageSize: 1000,
+      adjusted: false,
+      maxPages: 100, // 과거로 몇 번까지 요청할지 제한 (필요시 조정)
+    })
+
+    // 이전 요청이 뒤늦게 도착한 경우 무시
+    if (reqId !== currentReq) return
+
+    candles.value = points.map((p) => ({
+      time: p.time as UTCTimestamp,
+      open: p.open,
+      high: p.high,
+      low: p.low,
+      close: p.close,
+      volume: p.volume ?? 0,
+    }))
 
     if (candles.value.length > 0) {
       market.livePrice = candles.value[candles.value.length - 1].close
@@ -197,18 +180,51 @@ async function load(symbol: string, tf: Timeframe) {
     console.error(`Failed to load data for symbol ${symbol}:`, error)
     ui.pushToast?.({
       type: 'error',
-      message: `Unknown/unsupported symbol: ${symbol}. Fallback to 005930.`,
+      message: `Unknown/unsupported symbol: ${symbol}. Fallback to KRX:005930.`,
     })
-    if (symbol !== '005930') {
-      // 폴백: 삼성전자
-      market.setSymbol('005930')
-      // 재시도
-      try {
-        await load('005930', tf)
-      } catch {}
+    if (symbol !== 'KRX:005930') {
+      // 이중 호출 방지
+      market.setSymbol('KRX:005930')
     }
   }
 }
+
+async function onLoadOlder(oldestTime: number) {
+  console.debug('[Chart] Load older data before', oldestTime)
+
+  const more = await getSeriesBackward(market.symbol, {
+    resolution: tfToResolution(timeframe.value),
+    pageSize: 1000,
+    adjusted: false,
+    maxPages: 3,
+  })
+
+  // 1) OHLCVPoint[] -> CandlePoint[] 로 변환 (time을 UTCTimestamp로 캐스팅)
+  const moreCandles: CandlePoint[] = more.map((p) => ({
+    time: p.time as UTCTimestamp,
+    open: p.open,
+    high: p.high,
+    low: p.low,
+    close: p.close,
+    volume: p.volume ?? 0,
+  }))
+
+  // 2) 병합 + 중복 제거 + 정렬 (결과 타입을 CandlePoint[]로 유지)
+  const all: CandlePoint[] = [...moreCandles, ...candles.value]
+
+  const seen = new Set<number>()
+  const merged: CandlePoint[] = all
+    .filter((c) => {
+      const key = Number(c.time)
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .sort((a, b) => Number(a.time) - Number(b.time))
+
+  candles.value = merged
+}
+
 function onClear() {
   window.dispatchEvent(new CustomEvent('overlay:close'))
 }

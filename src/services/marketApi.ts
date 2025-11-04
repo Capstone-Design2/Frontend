@@ -1,4 +1,3 @@
-// src/services/marketApi.ts
 import http from '@/services/http'
 
 type TVHistoryOk = {
@@ -9,12 +8,13 @@ type TVHistoryOk = {
   l: number[]
   c: number[]
   v: number[]
+  nextTime?: number
 }
 type TVHistoryNoData = { s: 'no_data'; nextTime?: number }
 type TVHistory = TVHistoryOk | TVHistoryNoData
 
 export interface OHLCVPoint {
-  time: number
+  time: number // seconds (UTC)
   open: number
   high: number
   low: number
@@ -22,11 +22,9 @@ export interface OHLCVPoint {
   volume: number
 }
 
-// 심볼 유효성: EXCHANGE:CODE 또는 CODE.SUFFIX 또는 영문/숫자(직접코드)만 허용
+// 종목코드 유효성 검사
 function isProbablyCanonicalSymbol(sym: string): boolean {
-  // 한글/공백 등 사람이 읽는 이름은 바로 차단
   if (/[^A-Za-z0-9:.\-]/.test(sym)) return false
-  // 최소한 숫자/영문은 포함되어야 함
   return /[A-Za-z0-9]/.test(sym)
 }
 
@@ -35,58 +33,198 @@ export async function getServerTime(): Promise<number> {
   return res.data
 }
 
-export async function getDailySeries(symbol: string, limit = 180): Promise<OHLCVPoint[]> {
-  // 1) 심볼 가드: 이름(예: '삼성전자')이 들어오면 즉시 실패
+export async function getSeriesPaged(
+  symbol: string,
+  {
+    resolution = 'D',
+    limit = 300,
+    pageSize = 500,
+    adjusted = false,
+    signal,
+  }: {
+    resolution?: string
+    limit?: number
+    pageSize?: number
+    adjusted?: boolean
+    signal?: AbortSignal
+  } = {},
+): Promise<OHLCVPoint[]> {
   if (!isProbablyCanonicalSymbol(symbol)) {
-    // 여길 탄다면 상위에서 selectedSymbol 세팅/주입이 잘못된 것
-    throw new Error(
-      `getDailySeries(): invalid symbol '${symbol}'. Must be canonical like 'KRX:005930' or '005930.KS'.`,
-    )
+    throw new Error(`잘못된 종목코드 : '${symbol}'. 한국거래소 표준 코드인지 확인 필요.`)
   }
 
   const now = await getServerTime()
-  const daysBuffer = 20
+
+  // 서버는 from/to(초 단위)를 받고, nextTime으로 이어붙일 수 있음
+  // 처음 한 번은 충분히 넉넉한 과거부터 시작(버퍼일 + 페이지네이션으로 보강)
+  const daysBuffer = 120
   const from = now - (limit + daysBuffer) * 86_400
-  const to = now
+  let to = now
 
-  // 2) 반드시 URLSearchParams로 인코딩 (콜론/닷 안전)
-  const qs = new URLSearchParams({
-    symbol, // 원본문자열 (예: KRX:005930)
-    resolution: 'D',
-    from: String(from),
-    to: String(to),
-    adjusted: 'false',
-  })
+  // 페이지네이션 루프
+  const rows: OHLCVPoint[] = []
+  let cursor: number | undefined = undefined
+  let safety = 0
 
-  // 디버그: 네트워크 패널에서 실제 요청 확인용 (개발 중에만)
-  // console.debug('[GET] /tradingview/history?', qs.toString())
+  while (rows.length < limit && safety < 20) {
+    safety++
 
-  const url = `/tradingview/history?${qs.toString()}`
-  const res = await http.get<TVHistory>(url)
+    const params: Record<string, string> = {
+      symbol,
+      resolution,
+      from: String(from),
+      to: String(to),
+      adjusted: String(adjusted),
+      page_size: String(pageSize),
+    }
 
-  const data = res.data
-  if (data.s !== 'ok') return []
+    if (cursor !== undefined) {
+      params.cursor_ts = String(cursor)
+    }
 
-  const n = Math.min(
-    data.t.length,
-    data.o.length,
-    data.h.length,
-    data.l.length,
-    data.c.length,
-    data.v.length,
-  )
-  const start = Math.max(0, n - limit)
+    const qs = new URLSearchParams(params)
+    console.debug('Fetching:', `/tradingview/history?${qs.toString()}`)
 
-  const out: OHLCVPoint[] = []
-  for (let i = start; i < n; i++) {
-    out.push({
-      time: data.t[i],
-      open: data.o[i],
-      high: data.h[i],
-      low: data.l[i],
-      close: data.c[i],
-      volume: data.v[i],
-    })
+    const url = `/tradingview/history?${qs.toString()}`
+    const res = await http.get<TVHistory>(url, { signal })
+    const data = res.data
+
+    // 데이터 없음: nextTime이 있으면 그 지점으로 범위 당겨서 재시도
+    if (data.s === 'no_data') {
+      if (typeof data.nextTime === 'number') {
+        // 다음 페이지 기준을 서버가 제시
+        cursor = data.nextTime
+        continue
+      }
+      break
+    }
+
+    // 정상 데이터 적재
+    const n = Math.min(
+      data.t.length,
+      data.o.length,
+      data.h.length,
+      data.l.length,
+      data.c.length,
+      data.v.length,
+    )
+
+    for (let i = 0; i < n; i++) {
+      // 필터링/중복방지용: 기존에 같은 t가 있다면 스킵(서버가 중복 줄 수도 있으니)
+      const t = data.t[i]
+      if (rows.length && rows[rows.length - 1].time === t) continue
+
+      rows.push({
+        time: t,
+        open: data.o[i],
+        high: data.h[i],
+        low: data.l[i],
+        close: data.c[i],
+        volume: data.v[i],
+      })
+    }
+
+    // 다음 페이지로 넘어갈지 결정
+    if (typeof data.nextTime === 'number') {
+      // 보통 TradingView UDF의 nextTime은 "다음 요청의 to 또는 커서"로 쓰입니다.
+      // 백엔드가 next_time을 내려주므로 커서/시간 둘 다 동일 값으로 이동
+      cursor = data.nextTime
+      to = data.nextTime
+    } else {
+      // 더 이상 이어붙일 것이 없으면 종료
+      break
+    }
   }
+
+  // 정렬(혹시 뒤섞여 올 수 있으니 안전하게) + 중복 제거
+  rows.sort((a, b) => a.time - b.time)
+  const dedup: OHLCVPoint[] = []
+  for (const r of rows) {
+    if (!dedup.length || dedup[dedup.length - 1].time !== r.time) dedup.push(r)
+  }
+
+  // 요청한 limit만큼만 반환(뒤에서부터)
+  const start = Math.max(0, dedup.length - limit)
+  return dedup.slice(start)
+}
+
+/**
+ * 기존 API와 최대한 호환되는 Daily 전용 래퍼
+ * - 내부적으로 페이지네이션을 사용하도록 교체
+ */
+export async function getDailySeries(symbol: string, limit = 30): Promise<OHLCVPoint[]> {
+  return getSeriesPaged(symbol, { resolution: 'D', limit })
+}
+
+export async function getSeriesBackward(
+  symbol: string,
+  {
+    resolution = 'D',
+    pageSize = 500,
+    adjusted = false,
+    signal,
+    maxPages = 50,
+  }: {
+    resolution?: string
+    pageSize?: number
+    adjusted?: boolean
+    signal?: AbortSignal
+    maxPages?: number
+  } = {},
+): Promise<OHLCVPoint[]> {
+  const now = await getServerTime()
+  let to = now
+  const rows: OHLCVPoint[] = []
+  let safety = 0
+
+  const secPerBar = 24 * 60 * 60
+
+  while (safety < maxPages) {
+    safety++
+
+    const from = to - pageSize * secPerBar
+    const qs = new URLSearchParams({
+      symbol,
+      resolution,
+      from: String(from),
+      to: String(to),
+      adjusted: String(adjusted),
+      page_size: String(pageSize),
+    })
+
+    console.debug('[Fetch]', `/tradingview/history?${qs.toString()}`)
+    const { data } = await http.get<TVHistory>(`/tradingview/history?${qs.toString()}`, { signal })
+
+    if (data.s === 'no_data') break
+
+    const n = Math.min(
+      data.t.length,
+      data.o.length,
+      data.h.length,
+      data.l.length,
+      data.c.length,
+      data.v.length,
+    )
+    for (let i = 0; i < n; i++) {
+      rows.push({
+        time: data.t[i],
+        open: data.o[i],
+        high: data.h[i],
+        low: data.l[i],
+        close: data.c[i],
+        volume: data.v[i],
+      })
+    }
+
+    if (typeof data.nextTime === 'number' && data.nextTime < to) {
+      to = data.nextTime
+    } else {
+      break
+    }
+  }
+
+  rows.sort((a, b) => a.time - b.time)
+  const out: OHLCVPoint[] = []
+  for (const r of rows) if (!out.length || out[out.length - 1].time !== r.time) out.push(r)
   return out
 }
