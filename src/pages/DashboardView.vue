@@ -56,7 +56,7 @@
         </div>
       </div>
 
-      <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <!-- <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
         <div class="card p-4">
           <h3 class="mb-2 font-medium">Strategy Quickstart</h3>
           <p class="mb-3 text-sm text-slate-400">
@@ -78,7 +78,7 @@
           </p>
           <RouterLink class="btn-primary" to="/mypage">Open My Page</RouterLink>
         </div>
-      </div>
+      </div> -->
     </section>
 
     <aside class="lg:col-span-3">
@@ -111,7 +111,7 @@
 <script setup lang="ts">
 import type { UTCTimestamp } from 'lightweight-charts'
 import { onMounted, ref, computed, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+// import { RouterLink } from 'vue-router'
 import PriceChart from '@/components/Chart/PriceChart.vue'
 import OverlayCanvas from '@/components/Chart/OverlayCanvas.vue'
 import ChartToolbar from '@/components/Chart/ChartToolbar.vue'
