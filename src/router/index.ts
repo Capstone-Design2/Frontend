@@ -69,6 +69,11 @@ export const router = createRouter({
 })
 
 router.beforeEach((to, _from) => {
+  // 개발 환경에서는 인증 우회
+  if (import.meta.env.DEV) {
+    return true
+  }
+
   if (to.meta.requiresAuth) {
     const token = localStorage.getItem('auth.token')
     if (!token) {
