@@ -34,12 +34,17 @@
           rows="1"
         ></textarea>
 
+        <!-- Button: SVG icon -->
         <button
           type="submit"
-          class="btn-primary px-4 py-2 rounded-lg disabled:opacity-50"
+          class="btn-primary p-2 rounded-xl disabled:opacity-50 flex items-center justify-center cursor-pointer"
           :disabled="!internal.trim() || isLoading"
         >
-          전송
+          <img
+            src="@/assets/icons/chat.svg"
+            alt="send"
+            class="w-6 h-6 opacity-90 hover:opacity-100 transition filter invert"
+          />
         </button>
       </form>
     </div>
@@ -65,7 +70,7 @@ const internal = computed({
 const taRef = ref<HTMLTextAreaElement | null>(null)
 const listRef = ref<HTMLElement | null>(null)
 
-// 자동 스크롤
+// 메시지 추가 시 자동 스크롤
 watch(
   () => props.messages,
   () => {

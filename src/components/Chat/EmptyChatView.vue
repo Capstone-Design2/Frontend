@@ -9,21 +9,25 @@
 
     <form @submit.prevent="handleSend" class="w-full max-w-xl">
       <div class="relative">
-        <!-- ChatGPT style textarea -->
         <textarea
           ref="textareaRef"
           v-model="internal"
-          class="chat-input w-full px-3 py-2 rounded-xl bg-slate-800 text-slate-200 border border-slate-600 resize-none"
+          class="w-full px-3 py-4 pr-14 rounded-xl bg-slate-800 text-slate-200 border border-slate-600 resize-none leading-relaxed chat-input"
           placeholder="메시지를 입력하세요..."
           @input="autoGrow"
+          rows="1"
         ></textarea>
 
         <button
           type="submit"
-          class="absolute bottom-5 right-2 btn-primary px-3 py-1 text-sm rounded-lg disabled:opacity-50"
+          class="absolute bottom-4 right-2 btn-primary p-2 rounded-xl disabled:opacity-50 flex items-center justify-center"
           :disabled="isLoading || !internal.trim()"
         >
-          전송
+          <img
+            src="@/assets/icons/chat.svg"
+            alt="send"
+            class="w-5 h-5 opacity-80 invert hover:opacity-100 transition"
+          />
         </button>
       </div>
     </form>
@@ -53,7 +57,7 @@ function autoGrow() {
   if (!ta) return
 
   ta.style.height = 'auto'
-  ta.style.height = Math.min(ta.scrollHeight, 100) + 'px' // 최대 100px (약 6줄)
+  ta.style.height = Math.min(ta.scrollHeight, 100) + 'px'
 }
 
 function handleSend() {
@@ -61,15 +65,14 @@ function handleSend() {
   emit('sendMessage', internal.value.trim())
   internal.value = ''
 
-  // 입력 후 다시 auto-grow 적용
   nextTick(() => autoGrow())
 }
 </script>
 
 <style scoped>
 .chat-input {
-  min-height: 38px; /* 정확히 한 줄 높이 */
-  max-height: 120px; /* 3~5줄 */
+  min-height: 38px;
+  max-height: 120px;
   line-height: 1.4;
   overflow-y: auto;
   height: auto;
