@@ -4,7 +4,7 @@
       <div class="grid gap-4 md:grid-cols-2">
         <div>
           <label for="name" class="label">Name</label>
-          <input id="name" v-model="form.name" class="input" required aria-required="true" />
+          <input id="name" v-model="form.strategy_name" class="input" required aria-required="true" />
           <p v-if="errors.name" class="mt-1 text-xs text-danger">{{ errors.name }}</p>
         </div>
         <div>
@@ -15,7 +15,8 @@
     </section>
 
     <section class="card p-4">
-      <h3 class="mb-3 font-medium">Indicators</h3>
+      <h3 class="font-medium">Indicators</h3>
+      <p class="mb-3 text-sm text-slate-400">Select a single indicator to include in the strategy.</p>
       <div class="grid gap-4 md:grid-cols-2">
         <div>
           <label class="flex items-center gap-2"><input type="checkbox" v-model="smaToggle" aria-controls="sma-fields"/> SMA</label>
@@ -66,40 +67,26 @@
       </div>
     </section>
 
-    <section class="card p-4">
-      <h3 class="mb-3 font-medium">Rules</h3>
+    <section v-if="filteredStrategies.length > 0" class="card p-4">
+      <h3 class="mb-3 font-medium">Recommended Strategies</h3>
       <div class="grid gap-4 md:grid-cols-2">
-        <div>
-          <p class="mb-2 text-sm text-slate-300">Buy Conditions</p>
-          <label class="mb-1 flex items-center gap-2"><input type="checkbox" v-model="buy.smaCross"/> SMA crosses above price</label>
-          <label class="mb-1 flex items-center gap-2"><input type="checkbox" v-model="buy.rsiOversold"/> RSI below 30</label>
-          <label class="mb-1 flex items-center gap-2"><input type="checkbox" v-model="buy.macdBull"/> MACD bullish crossover</label>
-        </div>
-        <div>
-          <p class="mb-2 text-sm text-slate-300">Sell Conditions</p>
-          <label class="mb-1 flex items-center gap-2"><input type="checkbox" v-model="sell.smaCross"/> SMA crosses below price</label>
-          <label class="mb-1 flex items-center gap-2"><input type="checkbox" v-model="sell.rsiOverbought"/> RSI above 70</label>
-          <label class="mb-1 flex items-center gap-2"><input type="checkbox" v-model="sell.macdBear"/> MACD bearish crossover</label>
+        <div v-for="(preset, index) in filteredStrategies" :key="index" class="card p-4 cursor-pointer" @click="selectPreset(preset)">
+          <h4 class="font-semibold">{{ preset.strategy_name }}</h4>
+          <p class="text-sm text-slate-400">{{ preset.description }}</p>
         </div>
       </div>
-      <div class="mt-4 grid gap-4 md:grid-cols-3">
+    </section>
+
+    <section v-if="selectedPreset" class="card p-4">
+      <h3 class="mb-3 font-medium">{{ selectedPreset.strategy_name }} Rules</h3>
+      <div class="grid gap-4 md:grid-cols-2">
         <div>
-          <label for="sl" class="label">Stop-loss %</label>
-          <input id="sl" type="number" class="input" v-model.number="form.rules.stopLoss" step="0.1" min="0" />
+          <h4 class="font-semibold">Buy Condition</h4>
+          <pre class="mt-1 overflow-x-auto rounded bg-slate-800 p-3 text-xs">{{ JSON.stringify(selectedPreset.rules?.buy_condition, null, 2) }}</pre>
         </div>
         <div>
-          <label for="tp" class="label">Take-profit %</label>
-          <input id="tp" type="number" class="input" v-model.number="form.rules.takeProfit" step="0.1" min="0" />
-        </div>
-        <div>
-          <label class="label" for="ps-mode">Position sizing</label>
-          <div class="flex gap-2">
-            <select id="ps-mode" class="input" v-model="form.positionSizing.mode" aria-label="Position sizing mode">
-              <option value="fixed">Fixed amount</option>
-              <option value="percent">% Equity</option>
-            </select>
-            <input type="number" class="input" v-model.number="form.positionSizing.value" min="0" step="0.1" aria-label="Position sizing value" />
-          </div>
+          <h4 class="font-semibold">Sell Condition</h4>
+          <pre class="mt-1 overflow-x-auto rounded bg-slate-800 p-3 text-xs">{{ JSON.stringify(selectedPreset.rules?.sell_condition, null, 2) }}</pre>
         </div>
       </div>
     </section>
@@ -118,18 +105,40 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, watch } from 'vue'
+import { reactive, computed, watch, ref } from 'vue'
 import type { Strategy } from '@/types/Strategy'
 import { strategySchema, STRATEGY_SCHEMA_VERSION } from '@/utils/validation'
 
 interface Emits { (e:'save', value: Strategy): void }
 const emit = defineEmits<Emits>()
 
-const props = defineProps<{ modelValue?: Strategy | null }>()
+const props = defineProps<{ modelValue?: Strategy | null, presets: Partial<Strategy>[] }>()
+
+const filteredStrategies = ref<Partial<Strategy>[]>([])
+const selectedPreset = ref<Partial<Strategy> | null>(null)
+
+type IndicatorKey = 'sma' | 'ema' | 'rsi' | 'macd' | 'bbands'
+const indicatorOrder: IndicatorKey[] = ['sma', 'ema', 'rsi', 'macd', 'bbands']
+
+function isIndicatorKey(value: string): value is IndicatorKey {
+  return indicatorOrder.includes(value as IndicatorKey)
+}
+
+// simple reentrancy guard to avoid recursive reactive updates
+let _updating = false
+function withLock<T>(fn: () => T) {
+  if (_updating) return undefined as unknown as T
+  _updating = true
+  try {
+    return fn()
+  } finally {
+    _updating = false
+  }
+}
 
 const defaults: Strategy = {
   schemaVersion: STRATEGY_SCHEMA_VERSION,
-  name: '',
+  strategy_name: '',
   description: '',
   indicators: {},
   rules: { buy: [], sell: [] },
@@ -138,41 +147,118 @@ const defaults: Strategy = {
 
 const form = reactive<Strategy>({ ...defaults, ...(props.modelValue || {}) })
 
+function removeIndicator(key: IndicatorKey) {
+  if (key === 'sma') delete form.indicators.sma
+  else if (key === 'ema') delete form.indicators.ema
+  else if (key === 'rsi') delete form.indicators.rsi
+  else if (key === 'macd') delete form.indicators.macd
+  else if (key === 'bbands') delete form.indicators.bbands
+}
+
+function clearIndicators(except?: IndicatorKey) {
+  indicatorOrder.forEach(key => {
+    if (key !== except) removeIndicator(key)
+  })
+}
+
+function ensureSingleIndicator() {
+  const active = indicatorOrder.filter(key => form.indicators[key]?.enabled)
+  if (active.length <= 1) return
+  const [keep] = active
+  withLock(() => clearIndicators(keep))
+}
+
+ensureSingleIndicator()
+
+watch(form.indicators, (newIndicators) => {
+  const activeIndicatorKeys = indicatorOrder.filter(key => newIndicators[key]?.enabled)
+
+  if (activeIndicatorKeys.length > 1) {
+    const [keep] = activeIndicatorKeys
+    withLock(() => clearIndicators(keep))
+  }
+
+  const currentActive = indicatorOrder.filter(key => form.indicators[key]?.enabled)
+  if (currentActive.length === 0) {
+    filteredStrategies.value = []
+    selectedPreset.value = null
+    return
+  }
+
+  filteredStrategies.value = props.presets.filter(preset => {
+    if (!preset.indicators || !Array.isArray(preset.indicators)) return false
+    const presetIndicatorTypes = preset.indicators
+      .map(indicator => (indicator.type === 'bollinger_bands' ? 'bbands' : indicator.type))
+      .filter(isIndicatorKey)
+    return presetIndicatorTypes.includes(currentActive[0])
+  })
+  selectedPreset.value = null
+}, { deep: true })
+
+function selectPreset(preset: Partial<Strategy>) {
+  selectedPreset.value = preset
+}
+
 // toggles implemented as computed getters/setters to avoid separate reactive object and loops
 const smaToggle = computed({
   get: () => !!form.indicators.sma,
-  set: (v: boolean) => {
-    if (v) form.indicators.sma = form.indicators.sma ?? { enabled: true, period: 20 }
-    else delete form.indicators.sma
-  }
+  set: (v: boolean) => withLock(() => {
+    if (v) {
+      clearIndicators('sma')
+      const existing = form.indicators.sma ?? { enabled: true, period: 20 }
+      form.indicators.sma = { ...existing, enabled: true }
+    } else {
+      removeIndicator('sma')
+    }
+  })
 })
 const emaToggle = computed({
   get: () => !!form.indicators.ema,
-  set: (v: boolean) => {
-    if (v) form.indicators.ema = form.indicators.ema ?? { enabled: true, period: 20 }
-    else delete form.indicators.ema
-  }
+  set: (v: boolean) => withLock(() => {
+    if (v) {
+      clearIndicators('ema')
+      const existing = form.indicators.ema ?? { enabled: true, period: 20 }
+      form.indicators.ema = { ...existing, enabled: true }
+    } else {
+      removeIndicator('ema')
+    }
+  })
 })
 const rsiToggle = computed({
   get: () => !!form.indicators.rsi,
-  set: (v: boolean) => {
-    if (v) form.indicators.rsi = form.indicators.rsi ?? { enabled: true, period: 14 }
-    else delete form.indicators.rsi
-  }
+  set: (v: boolean) => withLock(() => {
+    if (v) {
+      clearIndicators('rsi')
+      const existing = form.indicators.rsi ?? { enabled: true, period: 14 }
+      form.indicators.rsi = { ...existing, enabled: true }
+    } else {
+      removeIndicator('rsi')
+    }
+  })
 })
 const macdToggle = computed({
   get: () => !!form.indicators.macd,
-  set: (v: boolean) => {
-    if (v) form.indicators.macd = form.indicators.macd ?? { enabled: true, fast: 12, slow: 26, signal: 9 }
-    else delete form.indicators.macd
-  }
+  set: (v: boolean) => withLock(() => {
+    if (v) {
+      clearIndicators('macd')
+      const existing = form.indicators.macd ?? { enabled: true, fast: 12, slow: 26, signal: 9 }
+      form.indicators.macd = { ...existing, enabled: true }
+    } else {
+      removeIndicator('macd')
+    }
+  })
 })
 const bbandsToggle = computed({
   get: () => !!form.indicators.bbands,
-  set: (v: boolean) => {
-    if (v) form.indicators.bbands = form.indicators.bbands ?? { enabled: true, period: 20, dev: 2 }
-    else delete form.indicators.bbands
-  }
+  set: (v: boolean) => withLock(() => {
+    if (v) {
+      clearIndicators('bbands')
+      const existing = form.indicators.bbands ?? { enabled: true, period: 20, dev: 2 }
+      form.indicators.bbands = { ...existing, enabled: true }
+    } else {
+      removeIndicator('bbands')
+    }
+  })
 })
 
 // params proxies
@@ -215,15 +301,6 @@ const bbandsDev = computed({
   }
 })
 
-// simple reentrancy guard to avoid recursive reactive updates
-let _updating = false
-function withLock<T>(fn: ()=>T) { if (_updating) return undefined as unknown as T; _updating = true; try { return fn() } finally { _updating = false } }
-
-// rule toggles -> strings
-const buy = reactive({ smaCross:false, rsiOversold:false, macdBull:false })
-const sell = reactive({ smaCross:false, rsiOverbought:false, macdBear:false })
-
-
 const errors = reactive<Record<string,string>>({})
 const isValid = computed(() => {
   try {
@@ -240,44 +317,20 @@ const isValid = computed(() => {
   }
 })
 
-// keep form.rules in sync with buy/sell toggles without mutating inside computed
-watch(() => [buy.smaCross, buy.rsiOversold, buy.macdBull, sell.smaCross, sell.rsiOverbought, sell.macdBear], () => {
-  if (_updating) return
-  const buys: string[] = []
-  if (buy.smaCross) buys.push('smaCrossPriceUp')
-  if (buy.rsiOversold) buys.push('rsi<30')
-  if (buy.macdBull) buys.push('macdBull')
-  const sells: string[] = []
-  if (sell.smaCross) sells.push('smaCrossPriceDown')
-  if (sell.rsiOverbought) sells.push('rsi>70')
-  if (sell.macdBear) sells.push('macdBear')
-  // only update if changed to avoid triggering unnecessary reactive cycles
-  const same = (a: string[], b: string[]) => a.length===b.length && a.every((v,i)=> v===b[i])
-  if (!same(form.rules.buy || [], buys)) withLock(()=> form.rules.buy = buys)
-  if (!same(form.rules.sell || [], sells)) withLock(()=> form.rules.sell = sells)
-}, { immediate: false })
 
 
 function applyPreset(kind: 'conservative'|'neutral'|'aggressive') {
   return withLock(() => {
     if (kind==='conservative') {
-      smaToggle.value = true; smaPeriod.value = 50
-      rsiToggle.value = true; rsiPeriod.value = 14
-      buy.smaCross = true; sell.smaCross = true
-      form.positionSizing = { mode: 'percent', value: 5 }
-      form.rules.stopLoss = 5; form.rules.takeProfit = 10
+      smaToggle.value = true
+      smaPeriod.value = 50
     } else if (kind==='neutral') {
-      emaToggle.value = true; emaPeriod.value = 21
-      macdToggle.value = true; macdFast.value=12; macdSlow.value=26; macdSignal.value=9
-      buy.macdBull = true; sell.macdBear = true
-      form.positionSizing = { mode: 'percent', value: 10 }
-      form.rules.stopLoss = 7; form.rules.takeProfit = 14
+      emaToggle.value = true
+      emaPeriod.value = 21
     } else {
-      bbandsToggle.value = true; bbandsPeriod.value=20; bbandsDev.value=2
-      rsiToggle.value = true; rsiPeriod.value = 7
-      buy.rsiOversold = true; sell.rsiOverbought = true
-      form.positionSizing = { mode: 'percent', value: 20 }
-      form.rules.stopLoss = 8; form.rules.takeProfit = 12
+      bbandsToggle.value = true
+      bbandsPeriod.value = 20
+      bbandsDev.value = 2
     }
   })
 }
