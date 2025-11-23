@@ -40,7 +40,12 @@ export async function signupApi(req: SignupReq): Promise<void> {
 }
 
 export async function loginApi(req: LoginReq): Promise<LoginRes> {
-  const res = await http.post('/auth/login', req)
+  const params = new URLSearchParams()
+  params.append('username', req.username)
+  params.append('password', req.password)
+  const res = await http.post('/auth/login', params, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  })
   const token = pickToken(res.data)
   return { token }
 }
