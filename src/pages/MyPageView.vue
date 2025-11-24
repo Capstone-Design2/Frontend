@@ -12,7 +12,7 @@
         <div class="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
           <div>
             <h3 class="text-sm font-medium text-slate-400">Username</h3>
-            <p>{{ auth.user?.username }}</p>
+            <p>{{ auth.user?.name }}</p>
           </div>
           <div>
             <h3 class="text-sm font-medium text-slate-400">Email</h3>
