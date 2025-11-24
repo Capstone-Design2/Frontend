@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-[400px] rounded-lg text-slate-200">
+  <div class="flex flex-col h-[600px] rounded-lg text-slate-200">
     <!-- Loading -->
     <div v-if="isLoading && messages.length === 0" class="flex flex-1 items-center justify-center">
       <div

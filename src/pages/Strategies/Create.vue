@@ -1,7 +1,7 @@
 <template>
   <div class="mx-auto max-w-5xl px-4 pt-6">
     <h1 class="mb-4 text-xl font-semibold">Create Strategy</h1>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
       <RuleBuilder @save="onSave" />
       <section class="card">
         <ChatPanel />
