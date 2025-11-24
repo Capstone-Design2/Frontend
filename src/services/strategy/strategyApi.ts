@@ -1,12 +1,18 @@
 import { http } from '@/services/http'
-import type { Strategy } from '@/types/Strategy'
+import type {
+  Strategy,
+  StrategyChatRequest,
+  StrategyChatResponse,
+} from '@/types/Strategy'
 
 export const getStrategies = async (): Promise<Strategy[]> => {
   const response = await http.get('/api/strategy/')
   return response.data
 }
 
-export const createStrategy = async (strategyData: Omit<Strategy, 'id'>): Promise<Strategy> => {
+export const createStrategy = async (
+  strategyData: Omit<Strategy, 'id'>,
+): Promise<Strategy> => {
   const response = await http.post('/api/strategy/', strategyData)
   return response.data
 }
@@ -26,4 +32,11 @@ export const updateStrategy = async (
 
 export const deleteStrategy = async (id: string | number): Promise<void> => {
   await http.delete(`/api/strategy/${id}`)
+}
+
+export const strategyChat = async (
+  request: StrategyChatRequest,
+): Promise<StrategyChatResponse> => {
+  const response = await http.post('/strategy/chat', request)
+  return response.data
 }

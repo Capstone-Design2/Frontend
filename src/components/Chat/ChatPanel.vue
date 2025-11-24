@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-[400px] rounded-lg text-slate-200">
     <!-- Loading -->
-    <div v-if="initialLoading" class="flex flex-1 items-center justify-center">
+    <div v-if="isLoading && messages.length === 0" class="flex flex-1 items-center justify-center">
       <div
         class="animate-spin w-10 h-10 border-4 border-slate-500 border-t-transparent rounded-full"
       ></div>
@@ -29,66 +29,44 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import EmptyChatView from '@/components/Chat/EmptyChatView.vue'
 import ActiveChatView from '@/components/Chat/ActiveChatView.vue'
+import { useStrategyStore } from '@/stores/useStrategyStore'
+import type { StrategyChatMessage } from '@/types/Strategy'
 
-const messages = ref([])
+const strategyStore = useStrategyStore()
+
+const messages = ref<StrategyChatMessage[]>([])
 const newMessage = ref('')
-const chatId = ref(null)
-
-const initialLoading = ref(true)
 const isLoading = ref(false)
 
-// 초기 로딩 (딜레이만)
-onMounted(() => {
-  setTimeout(() => {
-    initialLoading.value = false
-  }, 200)
-})
-
-// 메시지 전송
-async function sendMessage(content = null) {
+async function sendMessage(content: string | null = null) {
   const text = content || newMessage.value.trim()
   if (!text) return
 
-  // 사용자 메시지
+  // 1. 사용자 메시지를 로컬 상태에 추가
   messages.value.push({ content: text, isBot: false })
   newMessage.value = ''
   isLoading.value = true
 
   try {
-    let response
+    // 2. 스토어 액션을 호출하고 결과를 기다림
+    const response = await strategyStore.sendChatMessage(text)
 
-    if (!chatId.value) {
-      // 새 대화 생성
-      const res = await createConversation({ content: text })
-      chatId.value = res.id
-
-      if (res.first_message) {
-        messages.value.push({
-          content: res.first_message.content,
-          isBot: true,
-          audioBase64: res.first_message.audio_base64,
-        })
-      }
-    } else {
-      // 기존 대화 전송
-      response = await apiSendMessage(chatId.value, { content: text })
-      messages.value.push({
-        content: response.content,
-        isBot: true,
-        audioBase64: response.audio_base64,
-      })
-    }
+    // 3. 받은 객체를 보기 좋은 JSON 문자열로 변환하여 로컬 상태에 추가
+    const jsonString = JSON.stringify(response, null, 2)
+    messages.value.push({ content: jsonString, isBot: true })
   } catch (e) {
     messages.value.push({
       content: 'AI 응답을 가져오는 데 실패했습니다.',
       isBot: true,
     })
+    // 에러를 콘솔에도 출력
+    console.error('Failed to send chat message:', e)
+  } finally {
+    isLoading.value = false
   }
-
-  isLoading.value = false
 }
 </script>
 

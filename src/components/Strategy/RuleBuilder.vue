@@ -209,11 +209,6 @@
         <button type="submit" class="btn-primary" :disabled="!isValid">Save Strategy</button>
       </div>
     </section>
-
-    <!-- 새로 만드는 Chat UI -->
-    <section class="card">
-      <ChatPanel />
-    </section>
   </form>
 </template>
 
@@ -221,7 +216,6 @@
 import { reactive, computed, watch } from 'vue'
 import type { Strategy } from '@/types/Strategy'
 import { strategySchema, STRATEGY_SCHEMA_VERSION } from '@/utils/validation'
-import ChatPanel from '@/components/Chat/ChatPanel.vue'
 
 interface Emits {
   (e: 'save', value: Strategy): void
