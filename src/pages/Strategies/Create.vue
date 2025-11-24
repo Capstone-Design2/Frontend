@@ -15,9 +15,21 @@ import RuleBuilder from '@/components/Strategy/RuleBuilder.vue'
 import ChatPanel from '@/components/Chat/ChatPanel.vue'
 import { useStrategyStore } from '@/stores/useStrategyStore'
 import { useRouter } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { getStrategyPresets } from '@/services/strategy/strategyApi'
+import type { Strategy } from '@/types/Strategy'
 
 const router = useRouter()
 const strategies = useStrategyStore()
+const presets = ref<Partial<Strategy>[]>([])
+
+onMounted(async () => {
+  try {
+    presets.value = await getStrategyPresets()
+  } catch (error) {
+    console.error("Failed to fetch strategy presets:", error)
+  }
+})
 
 async function onSave(payload: any) {
   try {

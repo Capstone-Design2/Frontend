@@ -5,7 +5,7 @@
       <div class="grid gap-4 md:grid-cols-2">
         <div>
           <label for="name" class="label">Name</label>
-          <input id="name" v-model="form.name" class="input" required aria-required="true" />
+          <input id="name" v-model="form.strategy_name" class="input" required aria-required="true" />
           <p v-if="errors.name" class="mt-1 text-xs text-danger">{{ errors.name }}</p>
         </div>
         <div>
@@ -16,7 +16,8 @@
     </section>
 
     <section class="card p-4">
-      <h3 class="mb-3 font-medium">Indicators</h3>
+      <h3 class="font-medium">Indicators</h3>
+      <p class="mb-3 text-sm text-slate-400">Select a single indicator to include in the strategy.</p>
       <div class="grid gap-4 md:grid-cols-2">
         <div>
           <label class="flex items-center gap-2"
@@ -119,8 +120,8 @@
       </div>
     </section>
 
-    <section class="card p-4">
-      <h3 class="mb-3 font-medium">Rules</h3>
+    <section v-if="filteredStrategies.length > 0" class="card p-4">
+      <h3 class="mb-3 font-medium">Recommended Strategies</h3>
       <div class="grid gap-4 md:grid-cols-2">
         <div>
           <p class="mb-2 text-sm text-slate-300">Buy Conditions</p>
@@ -213,7 +214,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, watch } from 'vue'
+import { reactive, computed, watch, ref } from 'vue'
 import type { Strategy } from '@/types/Strategy'
 import { strategySchema, STRATEGY_SCHEMA_VERSION } from '@/utils/validation'
 
@@ -222,11 +223,33 @@ interface Emits {
 }
 const emit = defineEmits<Emits>()
 
-const props = defineProps<{ modelValue?: Strategy | null }>()
+const props = defineProps<{ modelValue?: Strategy | null, presets: Partial<Strategy>[] }>()
+
+const filteredStrategies = ref<Partial<Strategy>[]>([])
+const selectedPreset = ref<Partial<Strategy> | null>(null)
+
+type IndicatorKey = 'sma' | 'ema' | 'rsi' | 'macd' | 'bbands'
+const indicatorOrder: IndicatorKey[] = ['sma', 'ema', 'rsi', 'macd', 'bbands']
+
+function isIndicatorKey(value: string): value is IndicatorKey {
+  return indicatorOrder.includes(value as IndicatorKey)
+}
+
+// simple reentrancy guard to avoid recursive reactive updates
+let _updating = false
+function withLock<T>(fn: () => T) {
+  if (_updating) return undefined as unknown as T
+  _updating = true
+  try {
+    return fn()
+  } finally {
+    _updating = false
+  }
+}
 
 const defaults: Strategy = {
   schemaVersion: STRATEGY_SCHEMA_VERSION,
-  name: '',
+  strategy_name: '',
   description: '',
   indicators: {},
   rules: { buy: [], sell: [] },
@@ -234,6 +257,58 @@ const defaults: Strategy = {
 }
 
 const form = reactive<Strategy>({ ...defaults, ...(props.modelValue || {}) })
+
+function removeIndicator(key: IndicatorKey) {
+  if (key === 'sma') delete form.indicators.sma
+  else if (key === 'ema') delete form.indicators.ema
+  else if (key === 'rsi') delete form.indicators.rsi
+  else if (key === 'macd') delete form.indicators.macd
+  else if (key === 'bbands') delete form.indicators.bbands
+}
+
+function clearIndicators(except?: IndicatorKey) {
+  indicatorOrder.forEach(key => {
+    if (key !== except) removeIndicator(key)
+  })
+}
+
+function ensureSingleIndicator() {
+  const active = indicatorOrder.filter(key => form.indicators[key]?.enabled)
+  if (active.length <= 1) return
+  const [keep] = active
+  withLock(() => clearIndicators(keep))
+}
+
+ensureSingleIndicator()
+
+watch(form.indicators, (newIndicators) => {
+  const activeIndicatorKeys = indicatorOrder.filter(key => newIndicators[key]?.enabled)
+
+  if (activeIndicatorKeys.length > 1) {
+    const [keep] = activeIndicatorKeys
+    withLock(() => clearIndicators(keep))
+  }
+
+  const currentActive = indicatorOrder.filter(key => form.indicators[key]?.enabled)
+  if (currentActive.length === 0) {
+    filteredStrategies.value = []
+    selectedPreset.value = null
+    return
+  }
+
+  filteredStrategies.value = props.presets.filter(preset => {
+    if (!preset.indicators || !Array.isArray(preset.indicators)) return false
+    const presetIndicatorTypes = preset.indicators
+      .map(indicator => (indicator.type === 'bollinger_bands' ? 'bbands' : indicator.type))
+      .filter(isIndicatorKey)
+    return presetIndicatorTypes.includes(currentActive[0])
+  })
+  selectedPreset.value = null
+}, { deep: true })
+
+function selectPreset(preset: Partial<Strategy>) {
+  selectedPreset.value = preset
+}
 
 // toggles implemented as computed getters/setters to avoid separate reactive object and loops
 const smaToggle = computed({
