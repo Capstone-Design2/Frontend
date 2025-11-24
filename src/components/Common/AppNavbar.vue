@@ -90,7 +90,7 @@
             class="hidden cursor-pointer text-sm text-slate-300 hover:text-white md:block"
             title="마이페이지로 이동"
           >
-            Hi, {{ auth.user?.username }}
+            Hi, {{ auth.user?.name }}
           </RouterLink>
           <button class="btn-primary" @click="onLogout">Logout</button>
         </template>
