@@ -13,3 +13,17 @@ export interface Strategy {
   rules: { buy: string[]; sell: string[]; stop_loss?: number; take_profit?: number }
   position_sizing: { mode: 'fixed'|'percent'; value: number }
 }
+
+export interface StrategyChatRequest {
+  content: string
+}
+
+export interface StrategyChatResponse {
+  reply: string
+}
+
+// 채팅 메시지 한 개의 형태를 정의합니다.
+export interface StrategyChatMessage {
+  content: string
+  isBot: boolean
+}

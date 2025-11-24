@@ -1,45 +1,58 @@
 import { defineStore } from 'pinia'
-import type { Strategy } from '@/types/Strategy'
-import { getStrategies, createStrategy, updateStrategy, deleteStrategy, getStrategyById } from '@/services/strategy/strategyApi'
+import type {
+  Strategy,
+  StrategyChatMessage,
+  StrategyChatResponse,
+} from '@/types/Strategy'
+import {
+  getStrategies,
+  createStrategy,
+  updateStrategy,
+  deleteStrategy,
+  getStrategyById,
+  strategyChat,
+} from '@/services/strategy/strategyApi'
 
 export const useStrategyStore = defineStore('strategies', {
   state: () => ({
     strategies: [] as Strategy[],
-    isLoading: false,
+    isStrategyLoading: false,
   }),
   actions: {
     async fetchStrategies() {
-      this.isLoading = true
+      this.isStrategyLoading = true
       try {
         this.strategies = await getStrategies()
       } catch (error) {
         console.error('Failed to fetch strategies:', error)
       } finally {
-        this.isLoading = false
+        this.isStrategyLoading = false
       }
     },
 
     async fetchStrategyById(id: string | number) {
-      this.isLoading = true
+      this.isStrategyLoading = true
       try {
         const fetchedStrategy = await getStrategyById(id as string)
-        const index = this.strategies.findIndex(s => s.strategy_id === fetchedStrategy.strategy_id)
+        const index = this.strategies.findIndex(
+          (s) => s.strategy_id === fetchedStrategy.strategy_id,
+        )
         if (index !== -1) {
           this.strategies[index] = fetchedStrategy
         } else {
           this.strategies.push(fetchedStrategy)
         }
-        return fetchedStrategy;
+        return fetchedStrategy
       } catch (error) {
         console.error(`Failed to fetch strategy with id ${id}:`, error)
-        throw error;
+        throw error
       } finally {
-        this.isLoading = false
+        this.isStrategyLoading = false
       }
     },
 
     async create(s: Partial<Strategy>) {
-      this.isLoading = true
+      this.isStrategyLoading = true
       try {
         const newStrategy = await createStrategy(s)
         this.strategies.push(newStrategy)
@@ -47,15 +60,17 @@ export const useStrategyStore = defineStore('strategies', {
         console.error('Failed to create strategy:', error)
         throw error
       } finally {
-        this.isLoading = false
+        this.isStrategyLoading = false
       }
     },
 
     async update(id: string | number, patch: Partial<Strategy>) {
-      this.isLoading = true
+      this.isStrategyLoading = true
       try {
         const updatedStrategy = await updateStrategy(id, patch)
-        const index = this.strategies.findIndex(s => s.strategy_id === updatedStrategy.strategy_id)
+        const index = this.strategies.findIndex(
+          (s) => s.strategy_id === updatedStrategy.strategy_id,
+        )
         if (index !== -1) {
           this.strategies[index] = updatedStrategy
         }
@@ -63,21 +78,25 @@ export const useStrategyStore = defineStore('strategies', {
         console.error('Failed to update strategy:', error)
         throw error
       } finally {
-        this.isLoading = false
+        this.isStrategyLoading = false
       }
     },
 
     async remove(id: string | number) {
-      this.isLoading = true
+      this.isStrategyLoading = true
       try {
         await deleteStrategy(id)
-        this.strategies = this.strategies.filter(s => s.strategy_id !== id)
+        this.strategies = this.strategies.filter((s) => s.strategy_id !== id)
       } catch (error) {
         console.error('Failed to delete strategy:', error)
         throw error
       } finally {
-        this.isLoading = false
+        this.isStrategyLoading = false
       }
     },
-  }
+
+    async sendChatMessage(content: string): Promise<StrategyChatResponse> {
+      return await strategyChat({ content })
+    },
+  },
 })
