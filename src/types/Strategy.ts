@@ -11,19 +11,40 @@ export interface Strategy {
     bbands?: { enabled: boolean; period: number; dev: number }
   }
   rules: { buy: string[]; sell: string[]; stop_loss?: number; take_profit?: number }
-  position_sizing: { mode: 'fixed'|'percent'; value: number }
+  position_sizing: { mode: 'fixed' | 'percent'; value: number }
 }
 
 export interface StrategyChatRequest {
   content: string
+  session_id?: string | null
 }
 
 export interface StrategyChatResponse {
+  session_id: string
+  status: 'chat' | 'in_progress' | 'complete'
   reply: string
+  conditions: {
+    indicators: boolean
+    buy_entry: boolean
+    buy_exit: boolean
+    sell_entry: boolean
+    sell_exit: boolean
+  }
+  strategy: any | null
 }
 
 // 채팅 메시지 한 개의 형태를 정의합니다.
 export interface StrategyChatMessage {
-  content: string
-  isBot: boolean
+  type: 'user' | 'bot' | 'strategy'
+  text?: string
+  typing?: boolean
+  status?: 'chat' | 'in_progress' | 'complete'
+  strategy?: any
+  conditions?: {
+    indicators: boolean
+    buy_entry: boolean
+    buy_exit: boolean
+    sell_entry: boolean
+    sell_exit: boolean
+  }
 }

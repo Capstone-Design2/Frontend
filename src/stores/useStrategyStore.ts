@@ -1,9 +1,5 @@
 import { defineStore } from 'pinia'
-import type {
-  Strategy,
-  StrategyChatMessage,
-  StrategyChatResponse,
-} from '@/types/Strategy'
+import type { Strategy, StrategyChatResponse } from '@/types/Strategy'
 import {
   getStrategies,
   createStrategy,
@@ -17,7 +13,9 @@ export const useStrategyStore = defineStore('strategies', {
   state: () => ({
     strategies: [] as Strategy[],
     isStrategyLoading: false,
+    sessionId: null as string | null,
   }),
+
   actions: {
     async fetchStrategies() {
       this.isStrategyLoading = true
@@ -96,7 +94,16 @@ export const useStrategyStore = defineStore('strategies', {
     },
 
     async sendChatMessage(content: string): Promise<StrategyChatResponse> {
-      return await strategyChat({ content })
+      const response = await strategyChat({
+        content,
+        session_id: this.sessionId,
+      })
+
+      if (!this.sessionId) {
+        this.sessionId = response.session_id
+      }
+
+      return response
     },
   },
 })

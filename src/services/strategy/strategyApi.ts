@@ -1,18 +1,12 @@
 import { http } from '@/services/http'
-import type {
-  Strategy,
-  StrategyChatRequest,
-  StrategyChatResponse,
-} from '@/types/Strategy'
+import type { Strategy, StrategyChatRequest, StrategyChatResponse } from '@/types/Strategy'
 
 export const getStrategies = async (): Promise<Strategy[]> => {
   const response = await http.get('strategy/')
   return response.data
 }
 
-export const createStrategy = async (
-  strategyData: Omit<Strategy, 'id'>,
-): Promise<Strategy> => {
+export const createStrategy = async (strategyData: Omit<Strategy, 'id'>): Promise<Strategy> => {
   const response = await http.post('/api/strategy/', strategyData)
   return response.data
 }
@@ -34,14 +28,10 @@ export const deleteStrategy = async (id: string | number): Promise<void> => {
   await http.delete(`strategy/${id}`)
 }
 
-export const getStrategyPresets = async (): Promise<Partial<Strategy>[]> => {
-  const response = await http.get('strategy/presets')
-  return response.data
-}
-
-export const strategyChat = async (
-  request: StrategyChatRequest,
-): Promise<StrategyChatResponse> => {
-  const response = await http.post('/strategy/chat', request)
+export const strategyChat = async (request: StrategyChatRequest) => {
+  const response = await http.post('/strategy/chat', {
+    content: request.content,
+    session_id: request.session_id ?? null,
+  })
   return response.data
 }

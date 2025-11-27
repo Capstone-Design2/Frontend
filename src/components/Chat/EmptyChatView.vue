@@ -14,6 +14,7 @@
           v-model="internal"
           class="w-full px-3 py-4 pr-14 rounded-xl bg-slate-800 text-slate-200 border border-slate-600 resize-none leading-relaxed chat-input"
           placeholder="메시지를 입력하세요..."
+          @keydown="handleKeyDown"
           @input="autoGrow"
           rows="1"
         ></textarea>
@@ -50,6 +51,20 @@ const internal = computed({
 })
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+
+// 🔥 Enter = 전송 / Shift+Enter = 줄바꿈
+function handleKeyDown(e: KeyboardEvent) {
+  // Shift + Enter → 기본 줄바꿈 허용
+  if (e.key === 'Enter' && e.shiftKey) {
+    return
+  }
+
+  // Enter 만 누르면 메시지 전송
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    handleSend()
+  }
+}
 
 // 자동 높이 조절
 function autoGrow() {

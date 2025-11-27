@@ -24,6 +24,8 @@
       v-model="newMessage"
       @sendMessage="sendMessage"
       :isLoading="isLoading"
+      @confirmStrategy="onConfirmStrategy"
+      @rejectStrategy="onRejectStrategy"
     />
   </div>
 </template>
@@ -45,28 +47,57 @@ async function sendMessage(content: string | null = null) {
   const text = content || newMessage.value.trim()
   if (!text) return
 
-  // 1. 사용자 메시지를 로컬 상태에 추가
-  messages.value.push({ content: text, isBot: false })
+  // 1. 사용자 메시지 push
+  messages.value.push({
+    type: 'user',
+    text: text,
+  })
+
   newMessage.value = ''
   isLoading.value = true
 
-  try {
-    // 2. 스토어 액션을 호출하고 결과를 기다림
-    const response = await strategyStore.sendChatMessage(text)
+  messages.value.push({
+    type: 'bot',
+    typing: true,
+  })
 
-    // 3. 받은 객체를 보기 좋은 JSON 문자열로 변환하여 로컬 상태에 추가
-    const jsonString = JSON.stringify(response, null, 2)
-    messages.value.push({ content: jsonString, isBot: true })
+  try {
+    // 백엔드 응답: { session_id, status, reply, strategy, conditions }
+    const response = await strategyStore.sendChatMessage(text)
+    const { status, reply, strategy, conditions } = response
+
+    messages.value = messages.value.filter((m) => !m.typing)
+
+    // 2. 봇 메시지를 status 기반으로 push
+    messages.value.push({
+      type: 'bot',
+      text: reply,
+      status,
+      strategy,
+      conditions,
+    })
   } catch (e) {
     messages.value.push({
-      content: 'AI 응답을 가져오는 데 실패했습니다.',
-      isBot: true,
+      type: 'bot',
+      text: 'AI 응답을 가져오는 데 실패했습니다.',
+      status: 'chat',
     })
-    // 에러를 콘솔에도 출력
-    console.error('Failed to send chat message:', e)
   } finally {
     isLoading.value = false
   }
+}
+
+function onConfirmStrategy(strategy: any) {
+  console.log('사용자가 전략을 확정했습니다:', strategy)
+  // TODO: 실제 전략 저장 API 호출하거나 strategy 생성 페이지로 이동
+}
+
+function onRejectStrategy() {
+  messages.value.push({
+    type: 'bot',
+    text: '알겠습니다. 다시 전략을 이어가보죠!',
+    status: 'chat',
+  })
 }
 </script>
 
