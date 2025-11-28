@@ -66,8 +66,6 @@ async function sendMessage(content: string | null = null) {
     const response = await strategyStore.sendChatMessage(text)
     const { status, reply, strategy, conditions } = response
 
-    messages.value = messages.value.filter((m) => !m.typing)
-
     // 2. 봇 메시지를 status 기반으로 push
     messages.value.push({
       type: 'bot',
@@ -77,19 +75,55 @@ async function sendMessage(content: string | null = null) {
       conditions,
     })
   } catch (e) {
+    console.log(e)
+
     messages.value.push({
       type: 'bot',
       text: 'AI 응답을 가져오는 데 실패했습니다.',
       status: 'chat',
     })
   } finally {
+    messages.value = messages.value.filter((m) => !m.typing)
     isLoading.value = false
   }
 }
 
 function onConfirmStrategy(strategy: any) {
-  console.log('사용자가 전략을 확정했습니다:', strategy)
-  // TODO: 실제 전략 저장 API 호출하거나 strategy 생성 페이지로 이동
+  const name = prompt('전략 이름을 입력하세요:')
+
+  if (!name || name.trim() === '') {
+    alert('전략 이름을 입력해야 합니다.')
+    return
+  }
+
+  try {
+    isLoading.value = true
+    const rulesObj = JSON.parse(strategy)
+
+    const payload = {
+      strategy_name: name,
+      description: '',
+      rules: rulesObj,
+    }
+
+    strategyStore.create(payload)
+
+    messages.value.push({
+      type: 'bot',
+      text: `전략이 성공적으로 저장되었습니다!`,
+      status: 'chat',
+    })
+  } catch (e) {
+    console.log(e)
+
+    messages.value.push({
+      type: 'bot',
+      text: '전략 저장 중 오류가 발생했습니다.',
+      status: 'chat',
+    })
+  } finally {
+    isLoading.value = false
+  }
 }
 
 function onRejectStrategy() {

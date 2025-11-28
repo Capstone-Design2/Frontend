@@ -7,7 +7,7 @@ export const getStrategies = async (): Promise<Strategy[]> => {
 }
 
 export const createStrategy = async (strategyData: Omit<Strategy, 'id'>): Promise<Strategy> => {
-  const response = await http.post('/api/strategy/', strategyData)
+  const response = await http.post('strategy/', strategyData)
   return response.data
 }
 
