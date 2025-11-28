@@ -13,7 +13,6 @@ export const useStrategyStore = defineStore('strategies', {
   state: () => ({
     strategies: [] as Strategy[],
     isStrategyLoading: false,
-    sessionId: null as string | null,
   }),
 
   actions: {
@@ -94,15 +93,7 @@ export const useStrategyStore = defineStore('strategies', {
     },
 
     async sendChatMessage(content: string): Promise<StrategyChatResponse> {
-      const response = await strategyChat({
-        content,
-        session_id: this.sessionId,
-      })
-
-      if (!this.sessionId) {
-        this.sessionId = response.session_id
-      }
-
+      const response = await strategyChat({ content })
       return response
     },
   },

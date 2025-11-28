@@ -16,35 +16,38 @@ export interface Strategy {
 
 export interface StrategyChatRequest {
   content: string
-  session_id?: string | null
+}
+
+export interface ConditionDetail {
+  filled: boolean
+  description: string | null
+}
+
+export interface ConditionsState {
+  indicators: ConditionDetail
+  buy_entry: ConditionDetail
+  buy_exit: ConditionDetail
+  sell_entry: ConditionDetail
+  sell_exit: ConditionDetail
 }
 
 export interface StrategyChatResponse {
   session_id: string
   status: 'chat' | 'in_progress' | 'complete'
   reply: string
-  conditions: {
-    indicators: boolean
-    buy_entry: boolean
-    buy_exit: boolean
-    sell_entry: boolean
-    sell_exit: boolean
-  }
+  conditions: ConditionsState
   strategy: any | null
 }
 
-// 채팅 메시지 한 개의 형태를 정의합니다.
+// 채팅 메시지 형태 정의
 export interface StrategyChatMessage {
   type: 'user' | 'bot' | 'strategy'
   text?: string
   typing?: boolean
+  // LLM status
   status?: 'chat' | 'in_progress' | 'complete'
+  // 최종 전략(json)
   strategy?: any
-  conditions?: {
-    indicators: boolean
-    buy_entry: boolean
-    buy_exit: boolean
-    sell_entry: boolean
-    sell_exit: boolean
-  }
+  // 조건 상태
+  conditions?: ConditionsState
 }

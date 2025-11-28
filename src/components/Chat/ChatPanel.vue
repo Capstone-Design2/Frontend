@@ -31,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import EmptyChatView from '@/components/Chat/EmptyChatView.vue'
 import ActiveChatView from '@/components/Chat/ActiveChatView.vue'
 import { useStrategyStore } from '@/stores/useStrategyStore'
@@ -99,8 +99,9 @@ function onRejectStrategy() {
     status: 'chat',
   })
 }
-</script>
 
-<style scoped>
-/* 필요 시 추가 스타일 */
-</style>
+onMounted(() => {
+  sessionStorage.removeItem('strategy_session_id')
+  messages.value = []
+})
+</script>

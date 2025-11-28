@@ -28,10 +28,17 @@ export const deleteStrategy = async (id: string | number): Promise<void> => {
   await http.delete(`strategy/${id}`)
 }
 
-export const strategyChat = async (request: StrategyChatRequest) => {
+export const strategyChat = async (request: StrategyChatRequest): Promise<StrategyChatResponse> => {
+  const storedSessionId = sessionStorage.getItem('strategy_session_id')
+
   const response = await http.post('/strategy/chat', {
     content: request.content,
-    session_id: request.session_id ?? null,
+    session_id: storedSessionId ?? null,
   })
+
+  if (response.data?.session_id) {
+    sessionStorage.setItem('strategy_session_id', response.data.session_id)
+  }
+
   return response.data
 }
