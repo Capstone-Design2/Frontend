@@ -27,7 +27,10 @@
             </div>
 
             <!-- 3) 소스 -->
-            <p class="text-sm text-slate-400">데이터: 한국투자증권 · WebSocket: 준비 중</p>
+            <p class="text-sm text-slate-400">
+              데이터: 한국투자증권 · WebSocket:
+              <span :class="wsStatusClass">{{ wsStatusText }}</span>
+            </p>
           </div>
 
           <!-- 헤더: 우측 툴바 -->
@@ -84,6 +87,8 @@
     <aside class="lg:col-span-3">
       <div class="space-y-6">
         <TradeWidget />
+        <AccountBalanceWidget />
+        <PositionsWidget />
         <div class="card p-4">
           <div class="mb-3 flex items-center justify-between">
             <h3 class="font-medium">Market Overview</h3>
@@ -110,13 +115,15 @@
 
 <script setup lang="ts">
 import type { UTCTimestamp } from 'lightweight-charts'
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 // import { RouterLink } from 'vue-router'
 import PriceChart from '@/components/Chart/PriceChart.vue'
 import OverlayCanvas from '@/components/Chart/OverlayCanvas.vue'
 import ChartToolbar from '@/components/Chart/ChartToolbar.vue'
 import MiniTicker from '@/components/Sidebar/MiniTicker.vue'
 import TradeWidget from '@/components/Sidebar/TradeWidget.vue'
+import AccountBalanceWidget from '@/components/Sidebar/AccountBalanceWidget.vue'
+import PositionsWidget from '@/components/Sidebar/PositionsWidget.vue'
 import { useMarketStore } from '@/stores/useMarketStore'
 import { getSeriesBackward } from '@/services/marketApi'
 import { useUiStore } from '@/stores/useUiStore'
@@ -144,6 +151,7 @@ const tool = ref<Tool>('none')
 const priceChart = ref<InstanceType<typeof PriceChart> | null>(null)
 const candles = ref<CandlePoint[]>([])
 const displayName = ref<string>('')
+const wsStatusInterval = ref<number | null>(null)
 
 // ---- 포맷터
 const fmtKRW = (n: number) =>
@@ -203,6 +211,12 @@ const chipColorClass = computed(() => {
   if (change.value == null) return 'bg-slate-700 text-slate-200'
   return change.value >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
 })
+
+// ---- WebSocket 연결 상태
+const wsStatusText = computed(() => (market.wsConnected ? '연결됨' : '연결 안됨'))
+const wsStatusClass = computed(() =>
+  market.wsConnected ? 'text-emerald-400 font-medium' : 'text-slate-400',
+)
 
 // ---- UDF resolution 매핑
 function tfToResolution(tf: Timeframe): '1' | '5' | '15' | '60' | 'D' {
@@ -328,5 +342,24 @@ watch(
 onMounted(async () => {
   await load(market.symbol, timeframe.value)
   market.loadMiniTickers()
+
+  // WebSocket 연결 및 실시간 가격 구독
+  market.subscribeToPrice(market.symbol)
+
+  // 연결 상태 주기적 체크 (5초마다)
+  wsStatusInterval.value = window.setInterval(() => {
+    market.updateConnectionStatus()
+  }, 5000)
+})
+
+// ---- cleanup
+onUnmounted(() => {
+  // WebSocket 구독 해제
+  market.unsubscribeFromPrice()
+
+  // 상태 체크 인터벌 정리
+  if (wsStatusInterval.value) {
+    clearInterval(wsStatusInterval.value)
+  }
 })
 </script>
