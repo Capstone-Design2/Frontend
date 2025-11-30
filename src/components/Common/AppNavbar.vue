@@ -4,8 +4,7 @@
       <!-- Left -->
       <div class="flex items-center gap-8">
         <RouterLink to="/" class="flex items-center gap-2">
-          <div class="h-6 w-6 rounded bg-[hsl(var(--primary))]"></div>
-          <span class="font-semibold">CAPSLOCK</span>
+          <span class="logo">CAPSLOCK</span>
         </RouterLink>
         <nav class="hidden items-center gap-6 md:flex">
           <RouterLink class="text-slate-300 hover:text-white" to="/">Dashboard</RouterLink>
@@ -282,3 +281,12 @@ function onEnter() {
   else searchSymbol()
 }
 </script>
+
+<style scoped>
+.logo {
+  font-family: 'Satoshi', 'Inter', sans-serif;
+  font-weight: 900;
+  font-size: 34px;
+  letter-spacing: 4px;
+}
+</style>
