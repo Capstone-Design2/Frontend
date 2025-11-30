@@ -32,12 +32,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import EmptyChatView from '@/components/Chat/EmptyChatView.vue'
 import ActiveChatView from '@/components/Chat/ActiveChatView.vue'
 import { useStrategyStore } from '@/stores/useStrategyStore'
 import type { StrategyChatMessage } from '@/types/Strategy'
 
 const strategyStore = useStrategyStore()
+const router = useRouter()
 
 const messages = ref<StrategyChatMessage[]>([])
 const newMessage = ref('')
@@ -88,7 +90,7 @@ async function sendMessage(content: string | null = null) {
   }
 }
 
-function onConfirmStrategy(strategy: any) {
+async function onConfirmStrategy(strategy: any) {
   const name = prompt('전략 이름을 입력하세요:')
 
   if (!name || name.trim() === '') {
@@ -106,13 +108,16 @@ function onConfirmStrategy(strategy: any) {
       rules: rulesObj,
     }
 
-    strategyStore.create(payload)
+    await strategyStore.create(payload)
 
     messages.value.push({
       type: 'bot',
       text: `전략이 성공적으로 저장되었습니다!`,
       status: 'chat',
     })
+
+    // 페이지 이동
+    router.push({ name: 'strategies' })
   } catch (e) {
     console.log(e)
 
