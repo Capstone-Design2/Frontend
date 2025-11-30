@@ -1,7 +1,5 @@
 # CAPSLOCK Frontend
 
-## Next-Gen Retail Trading Dashboard (Vue 3 + TypeScript + Vite)
-
 CAPSLOCK 프론트엔드는 **Vue 3 + TypeScript + Vite** 기반으로 구축된
 리테일 트레이더용 고성능 트레이딩 대시보드입니다.
 
