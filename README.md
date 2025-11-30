@@ -1,109 +1,245 @@
-# CAPSLOCK - 리테일 트레이딩 대시보드
+# CAPSLOCK Frontend
 
-Vue 3, Vite, TypeScript로 구축된 기능이 풍부한 트레이딩 대시보드입니다. 이 애플리케이션을 통해 사용자는 인터랙티브한 주식 차트를 보고, 규칙 기반 트레이딩 전략을 생성 및 관리하며, 과거 데이터를 기반으로 간단한 백테스트를 실행할 수 있습니다.
+CAPSLOCK 프론트엔드는 **Vue 3 + TypeScript + Vite** 기반으로 구축된
+리테일 트레이더용 고성능 트레이딩 대시보드입니다.
 
-## 주요 기능
+실시간 가격 표시, 전략 편집, 백테스팅, 모의투자 등
+**완전한 트레이딩 워크플로우**를 웹 환경에서 제공합니다.
 
-- **인터랙티브 차트**: 거래량을 포함하고 다양한 시간 간격을 지원하는 [TradingView's Lightweight Charts](https://www.tradingview.com/lightweight-charts/) 기반의 실시간 주식 차트.
-- **동적 심볼 검색**: Alpha Vantage API를 사용하여 주식 심볼을 찾는 자동 완성 기능이 포함된 네비게이션 바 검색 기능.
-- **전략 관리**: 규칙 기반 빌더를 사용하여 사용자 정의 트레이딩 전략을 생성, 조회, 수정 및 삭제. 전략은 브라우저의 로컬 스토리지에 저장됩니다.
-- **클라이언트 사이드 백테스팅**: 과거 데이터에 대해 전략을 기반으로 간단한 백테스트를 실행.
-- **모의 인증**: 개발 목적으로 완전한 사용자 인증 흐름(회원가입, 로그인, 로그아웃)을 모의로 구현.
-- **중앙 집중식 상태 관리**: Pinia를 사용한 깔끔하고 예측 가능한 상태 관리.
-- **모던 & 반응형 UI**: TailwindCSS로 구축된 다크 테마의 반응형 인터페이스.
+---
 
-## 기술 스택
+# 📁 프로젝트 구조
 
-- **프레임워크**: Vue 3 (Composition API 및 `<script setup>` 사용)
-- **빌드 도구**: Vite
-- **언어**: TypeScript
-- **상태 관리**: Pinia
-- **라우팅**: Vue Router
-- **스타일링**: TailwindCSS
-- **차트**: Lightweight Charts
-- **HTTP 클라이언트**: Axios
+```
+src/
+├── assets/                  # 정적 리소스 (아이콘, 전역 CSS 등)
+│   ├── icons/
+│   │   └── chat.svg
+│   ├── base.css
+│   └── main.css
+│
+├── components/              # UI 컴포넌트 (도메인 기반)
+│   ├── Chart/
+│   │   ├── ChartToolbar.vue
+│   │   ├── OverlayCanvas.vue
+│   │   └── PriceChart.vue
+│   ├── Chat/
+│   │   ├── ActiveChatView.vue
+│   │   ├── ChatPanel.vue
+│   │   └── EmptyChatView.vue
+│   ├── Common/
+│   │   ├── AppNavbar.vue
+│   │   ├── EmptyState.vue
+│   │   ├── Footer.vue
+│   │   ├── Modal.vue
+│   │   ├── ProtectedView.vue
+│   │   ├── Toast.vue
+│   │   └── ToastContainer.vue
+│   ├── Sidebar/
+│   │   ├── AccountBalanceWidget.vue
+│   │   ├── PositionsWidget.vue
+│   │   └── TradeWidget.vue
+│   └── Strategy/
+│       └── RuleBuilder.vue
+│
+├── pages/                   # 라우트 기반 페이지
+│   ├── Backtest/
+│   │   ├── History.vue
+│   │   ├── Results.vue
+│   │   └── Run.vue
+│   ├── Strategies/
+│   │   ├── Create.vue
+│   │   ├── Detail.vue
+│   │   ├── Edit.vue
+│   │   └── List.vue
+│   ├── DashboardView.vue
+│   ├── LoginView.vue
+│   ├── MyPageView.vue
+│   ├── NotFound.vue
+│   └── SignupView.vue
+│
+├── router/
+│   └── index.ts             # 페이지 라우팅
+│
+├── services/                # API & 도메인 서비스 계층
+│   ├── strategy/strategyApi.ts
+│   ├── authApi.ts
+│   ├── http.ts
+│   ├── marketApi.ts
+│   ├── marketIntraday.ts
+│   ├── paperTradingApi.ts
+│   ├── tvSymbolApi.ts
+│   └── websocket.ts
+│
+├── stores/                  # Pinia 상태 관리
+│   ├── useAuthStore.ts
+│   ├── useBacktestStore.ts
+│   ├── useMarketStore.ts
+│   ├── usePortfolioStore.ts
+│   ├── useStrategyStore.ts
+│   └── useUiStore.ts
+│
+├── styles/
+│   └── index.css
+│
+├── types/                   # TypeScript 타입 정의
+│   ├── Backtest.ts
+│   └── Strategy.ts
+│
+├── utils/                   # 유틸리티 함수
+│   ├── indicators.ts
+│   ├── strategyForm.ts
+│   └── validation.ts
+│
+├── App.vue
+├── config.ts
+├── env.d.ts
+├── main.ts
+└── vite-env.d.ts
 
-## 프로젝트 설정
+tests/                       # Vitest 기반 단위 테스트
+├── auth.store.test.ts
+├── strategy.rulebuilder.test.ts
+└── utils.sma.test.ts
+```
 
-1.  **저장소 복제**
+---
 
-2.  **환경 변수 설정**
+# ✨ 주요 기능
 
-    `Frontend` 디렉토리의 루트에 `.env` 파일을 만들고 Alpha Vantage API 키를 추가합니다.
+## 📊 1. 실시간 가격 차트 시스템
 
-    ```
-    VITE_ALPHA_VANTAGE_KEY=YOUR_API_KEY_HERE
-    ```
+* Lightweight Charts 기반 고성능 차트
+* OverlayCanvas로 실시간 오버레이 지원
+* 차트 툴바 (`ChartToolbar.vue`) 제공
+* WebSocket 기반 가격 스트림 (`services/websocket.ts`)
 
-3.  **의존성 설치 및 개발 서버 실행**
+## 🔍 2. 종목/시세/심볼 관리
+
+* `marketApi` + `tvSymbolApi`
+* Intraday/Polling 혼합 전략 (`marketIntraday.ts`)
+
+## 🧩 3. 전략 생성 & 규칙 빌더
+
+* Rule Builder UI (`RuleBuilder.vue`)
+* 전략 CRUD (`strategyApi.ts`)
+* 전략 Form Utils (`strategyForm.ts`)
+* 전략 타입 분리 (`types/Strategy.ts`)
+
+## 📈 4. 백테스팅 모듈
+
+* 실행(런), 결과, 히스토리 페이지 제공
+* SMA·RSI 등 기술 지표 (`indicators.ts`)
+* 결과 및 전략 기반 검증 로직
+
+## 🧪 5. 모의투자 / 포트폴리오
+
+* 주문/체결/포지션 간단 모델링
+* `paperTradingApi.ts`
+* `usePortfolioStore.ts`로 상태 통합
+
+## 🔐 6. 인증 & 접근 제어
+
+* 로그인/가입/세션 복원
+* ProtectedView를 통한 라우트 보호
+* JWT 기반 헤더 자동 부착 (`http.ts`)
+
+## 🎨 7. Tailwind 기반 반응형 UI
+
+* Navbar / Sidebar / Toast 시스템
+* 모달/알림/공통 컴포넌트 포함
+
+---
+
+# ⚙️ 설치 및 실행
+
+### 1. 의존성 설치
 
 ```bash
 npm install
+```
+
+### 2. 환경 변수 설정
+
+루트에 `.env` 생성:
+
+```
+API_BASE_URL=YOUR_API_URL
+```
+
+### 3. 개발 서버 실행
+
+```bash
 npm run dev
 ```
 
-4. **Tests**
+### 4. 프로덕션 빌드
 
 ```bash
+npm run build
+npm run preview
+```
+
+---
+
+# 🧱 아키텍처 개요
+
+## 1. Presentation Layer
+
+* `pages/`
+* `components/`
+  UI & UX 중심
+
+## 2. State Layer (Pinia)
+
+* 인증 / 시세 / 전략 / 백테스트 / UI / 포트폴리오
+
+## 3. Service Layer
+
+* API 통신 (`strategyApi`, `authApi`, `marketApi`)
+* WebSocket
+* Intraday Polling
+* Strategy Logic
+
+## 4. Utilities / Types
+
+* indicators, validator, forms
+* TS 기반 엄격한 유형 정의
+
+---
+
+# 🧪 테스트
+
+Vitest 기반 단위 테스트:
+
+```bash
+npm run test
 npm run test:unit
 ```
 
-## ENV
+테스트 커버리지 (옵션):
 
-- VITE_ALPHA_VANTAGE_KEY: Your Alpha Vantage API key
-- Alpha Vantage base: src/config.ts (ALPHA_VANTAGE_BASE)
-- Polling defaults: src/config.ts (POLLING_DEFAULTS)
-
-## Mock services
-
-- src/mock/api.ts: signup/login/id check using zod. Replace with real backend later.
-- src/mock/socket.ts: socket.io-like quotes stream via setInterval. Swap with real WS later.
-
-## Services
-
-- src/services/http.ts: axios instance with JWT header & error normalization
-- src/services/alphaVantage.ts: Daily/Intraday fetch + indicator helpers with simple cache
-
-## State (Pinia)
-
-- useAuthStore: token+user, login/signup/logout/restore (localStorage)
-- useMarketStore: selectedSymbol, mini tickers, live price, subscribe/unsubscribe, fallbackPoll
-- useStrategyStore: CRUD strategies (localStorage)
-- useBacktestStore: runBacktest (simple) + results (localStorage)
-- useUiStore: kill switch, toasts, theme
-
-## Routing
-
-Public: `/`, `/login`, `/signup` — Protected: strategies/backtest/mypage — NotFound route. Global afterEach closes overlays.
-
-## Strategy Schema
-
-Strategies are stored with a schemaVersion for forward compatibility. Example JSON:
-
-```json
-{
-  "schemaVersion": 1,
-  "name": "My Strat",
-  "description": "Demo",
-  "indicators": {
-    "sma": { "enabled": true, "period": 20 },
-    "rsi": { "enabled": true, "period": 14 }
-  },
-  "rules": {
-    "buy": ["smaCrossPriceUp", "rsi<30"],
-    "sell": ["smaCrossPriceDown"],
-    "stopLoss": 5,
-    "takeProfit": 10
-  },
-  "positionSizing": { "mode": "percent", "value": 10 }
-}
+```bash
+npm run coverage
 ```
 
-## Notes
+---
 
-- Alpha Vantage rate limits apply; sidebar includes notes for unsupported symbols (KOSPI/KOSDAQ/DXY).
-- Replace mock auth and websocket with real services as needed.
+# 🛠️ 개발 스크립트
 
-## License
+```bash
+npm run dev        # 개발 서버
+npm run build      # 프로덕션 빌드
+npm run preview    # 빌드 결과 로컬 미리보기
+npm run lint       # ESLint 검사
+npm run test       # 전체 테스트
+```
 
-Educational purposes only; no financial advice.
+---
+
+# 📄 라이선스
+
+MIT License
+트레이딩 관련 기능은 교육 목적이며, 투자 조언을 제공하지 않습니다.
+
+---
