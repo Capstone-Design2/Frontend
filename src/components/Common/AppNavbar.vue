@@ -1,9 +1,9 @@
 <template>
   <header class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
     <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-      <!-- Left Section: Logo and Nav Links -->
+      <!-- Left -->
       <div class="flex items-center gap-8">
-        <RouterLink to="/" class="flex flex-shrink-0 items-center gap-2">
+        <RouterLink to="/" class="flex items-center gap-2">
           <div class="h-6 w-6 rounded bg-[hsl(var(--primary))]"></div>
           <span class="font-semibold">CAPSLOCK</span>
         </RouterLink>
@@ -21,6 +21,7 @@
       <!-- Search -->
       <div class="relative hidden flex-1 items-center justify-center px-8 md:flex">
         <form @submit.prevent="searchSymbol" class="relative w-full max-w-md">
+          <!-- Icon -->
           <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
             <svg
               class="h-5 w-5 text-slate-400"
@@ -35,25 +36,20 @@
               />
             </svg>
           </div>
-          <!-- input: 키보드 숏컷/조합 이벤트는 기존 그대로 유지 -->
+          <!-- Input -->
           <input
-            id="symbol-search-nav"
-            v-model="searchQuery"
+            ref="inputRef"
             type="search"
             class="input w-full bg-slate-900/80 pl-10 pr-9"
             placeholder="Search symbol..."
             autocomplete="off"
             @input="onSearchInput"
-            @compositionstart="onCompositionStart"
-            @compositionend="onCompositionEnd"
-            @blur="hideSuggestions"
+            @blur="onBlur"
             @keydown.down.prevent="onArrowDown"
             @keydown.up.prevent="onArrowUp"
             @keydown.enter.prevent="onEnter"
-            aria-autocomplete="list"
-            :aria-expanded="showSuggestions"
-            role="combobox"
           />
+          <!-- Autocomplete List -->
           <div
             v-if="showSuggestions"
             class="absolute left-0 top-full z-50 mt-2 w-full max-h-60 overflow-y-auto rounded-md border border-slate-700 bg-slate-800 shadow-lg"
@@ -68,7 +64,7 @@
                   'cursor-pointer px-4 py-2 text-sm hover:bg-slate-700',
                   { 'bg-slate-700': index === highlightedIndex },
                 ]"
-                @mousedown="selectSuggestion(s)"
+                @click="selectSuggestion(s)"
               >
                 <span class="font-bold">{{ s.name }}</span>
                 <span class="text-slate-400"> — {{ s.symbol }}</span>
@@ -79,17 +75,13 @@
         </form>
       </div>
 
-      <!-- Right Section -->
-      <div class="flex flex-shrink-0 items-center gap-4">
+      <!-- Right -->
+      <div class="flex items-center gap-4">
         <button class="btn-outline hidden sm:block" @click="ui.toggleKillSwitch()">
           <span :class="ui.killSwitch ? 'text-danger' : 'text-slate-300'">Kill Switch</span>
         </button>
         <template v-if="auth.isAuthed">
-          <RouterLink
-            to="/mypage"
-            class="hidden cursor-pointer text-sm text-slate-300 hover:text-white md:block"
-            title="마이페이지로 이동"
-          >
+          <RouterLink to="/mypage" class="hidden text-sm text-slate-300 hover:text-white md:block">
             Hi, {{ auth.user?.name }}
           </RouterLink>
           <button class="btn-primary" @click="onLogout">Logout</button>
@@ -104,116 +96,79 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onBeforeUpdate, nextTick } from 'vue'
+import { ref, nextTick, type ComponentPublicInstance } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useUiStore } from '@/stores/useUiStore'
 import { useMarketStore } from '@/stores/useMarketStore'
-import { searchSymbolsUdf, type SymbolSearchItem } from '@/services/tvSymbolApi.ts'
+import { searchSymbolsUdf, type SymbolSearchItem } from '@/services/tvSymbolApi'
 
-defineOptions({ name: 'AppNavbar' })
-
+/*───────────────────────────────
+  STATE
+───────────────────────────────*/
 const router = useRouter()
 const auth = useAuthStore()
 const ui = useUiStore()
 const market = useMarketStore()
 
+const inputRef = ref<HTMLInputElement | null>(null)
 const searchQuery = ref('')
 const selectedSymbol = ref<string | null>(null)
+
 const suggestions = ref<SymbolSearchItem[]>([])
-const showSuggestions = ref(false)
 const isSearching = ref(false)
+const showSuggestions = ref(false)
 const highlightedIndex = ref(-1)
-const itemRefs = ref<Array<HTMLLIElement | null>>([])
+
+const isSelecting = ref(false)
+
 let searchTimeout: number | undefined
+const itemRefs = ref<(HTMLLIElement | null)[]>([])
 
-const isComposing = ref(false)
-
-onBeforeUpdate(() => {
-  itemRefs.value = []
-})
-
+/*───────────────────────────────
+  LOGOUT
+───────────────────────────────*/
 function onLogout() {
   auth.logout()
   router.push('/')
   ui.pushToast({ type: 'success', message: 'Logged out' })
 }
 
-function searchSymbol() {
-  const typed = searchQuery.value.trim()
-  if (!typed) return
-
-  let symbol = selectedSymbol.value
-
-  // 제안 목록에서 코드 매칭 시도 (사용자가 직접 코드로 입력한 경우 포함)
-  if (!symbol) {
-    const upper = typed.toUpperCase()
-    const hit = suggestions.value.find((s) =>
-      [s.rawSymbol, s.symbol].filter(Boolean).some((v) => v!.toUpperCase() === upper),
-    )
-    if (hit) symbol = hit.rawSymbol ?? hit.symbol
-  }
-
-  // 그래도 없으면 "코드처럼 보이는" 직접입력 허용 (예: KRX:005930, 005930.KS)
-  if (!symbol && /^[A-Za-z0-9:.]+$/.test(typed)) {
-    symbol = typed.toUpperCase()
-  }
-
-  if (!symbol) {
-    ui.pushToast({ type: 'error', message: '목록에서 종목을 선택하거나 코드로 입력하세요.' })
-    return
-  }
-
-  market.setSymbol(symbol)
-  showSuggestions.value = false
-  if (router.currentRoute.value.name !== 'dashboard') {
-    router.push({ name: 'dashboard' })
-  }
-}
-
-function setItemRef(index: number) {
-  return (el: Element | import('vue').ComponentPublicInstance | null) => {
-    itemRefs.value[index] = el instanceof HTMLLIElement ? el : null
-  }
-}
-
-function onCompositionStart() {
-  isComposing.value = true
-}
-
-function onCompositionEnd(e: CompositionEvent) {
-  isComposing.value = false
-  triggerSearch()
-}
-
+/*───────────────────────────────
+  INPUT HANDLER
+───────────────────────────────*/
 function onSearchInput() {
-  if (isComposing.value) return
+  if (isSelecting.value) return
+
+  searchQuery.value = inputRef.value?.value ?? ''
   selectedSymbol.value = null
+
   triggerSearch()
 }
 
-function normalizeQuery(q: string): { q: string; minChars: number } {
-  const trimmed = q.trim()
-  if (/^[A-Za-z0-9]+$/.test(trimmed)) {
-    // 영문/숫자 → 대문자 변환, 2글자 이상부터 검색
-    return { q: trimmed.toUpperCase(), minChars: 2 }
-  }
-  // 한글/기타 유니코드 → 그대로, 1글자부터 검색 허용
-  return { q: trimmed, minChars: 1 }
+/*───────────────────────────────
+  NORMALIZE QUERY
+───────────────────────────────*/
+function normalizeQuery(q: string) {
+  const t = q.trim()
+  if (/^[A-Za-z0-9]+$/.test(t)) return { q: t.toUpperCase(), minChars: 2 }
+  return { q: t, minChars: 1 }
 }
 
+/*───────────────────────────────
+  SEARCH SUGGESTIONS
+───────────────────────────────*/
 function triggerSearch() {
   window.clearTimeout(searchTimeout)
   const { q, minChars } = normalizeQuery(searchQuery.value)
 
   if (q.length < minChars) {
     showSuggestions.value = false
-    highlightedIndex.value = -1
     return
   }
 
-  isSearching.value = true
   showSuggestions.value = true
+  isSearching.value = true
 
   searchTimeout = window.setTimeout(async () => {
     try {
@@ -221,49 +176,109 @@ function triggerSearch() {
     } catch {
       suggestions.value = []
     } finally {
-      highlightedIndex.value = -1
       isSearching.value = false
+      highlightedIndex.value = -1
     }
-  }, 250)
-}
-
-function selectSuggestion(suggestion: SymbolSearchItem) {
-  searchQuery.value = suggestion.name
-  selectedSymbol.value = suggestion.rawSymbol ?? suggestion.symbol
-  showSuggestions.value = false
-  searchSymbol()
-}
-
-function hideSuggestions() {
-  window.setTimeout(() => {
-    showSuggestions.value = false
-    highlightedIndex.value = -1
   }, 200)
 }
 
+/*───────────────────────────────
+  SELECT SUGGESTION (1 CLICK!)
+───────────────────────────────*/
+function selectSuggestion(s: SymbolSearchItem) {
+  isSelecting.value = true
+
+  selectedSymbol.value = s.rawSymbol ?? s.symbol
+  showSuggestions.value = false
+
+  searchSymbol()
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      isSelecting.value = false
+    })
+  })
+}
+
+/*───────────────────────────────
+  APPLY SYMBOL
+───────────────────────────────*/
+function searchSymbol() {
+  const symbol = selectedSymbol.value
+  const typed = searchQuery.value.trim()
+
+  // 1) suggestion 선택 우선
+  if (symbol) {
+    market.setSymbol(symbol)
+    showSuggestions.value = false
+
+    if (router.currentRoute.value.name !== 'dashboard') {
+      router.push({ name: 'dashboard' })
+    }
+    return
+  }
+
+  // 2) 직접 코드 입력
+  const upper = typed.toUpperCase()
+  let final = null
+
+  const hit = suggestions.value.find((s) =>
+    [s.rawSymbol, s.symbol].filter(Boolean).some((v) => v!.toUpperCase() === upper),
+  )
+
+  if (hit) final = hit.rawSymbol ?? hit.symbol
+  if (!final && /^[A-Za-z0-9:.]+$/.test(typed)) final = upper
+
+  if (!final) {
+    ui.pushToast({ type: 'error', message: '목록에서 선택하거나 코드로 입력하세요.' })
+    return
+  }
+
+  market.setSymbol(final)
+  showSuggestions.value = false
+
+  if (router.currentRoute.value.name !== 'dashboard') {
+    router.push({ name: 'dashboard' })
+  }
+}
+
+/*───────────────────────────────
+  BLUR (safe)
+───────────────────────────────*/
+function onBlur() {
+  // 클릭하는 동안 blur 무시
+  setTimeout(() => {
+    if (!isSelecting.value) showSuggestions.value = false
+  }, 100)
+}
+
+/*───────────────────────────────
+  ARROWS / ENTER
+───────────────────────────────*/
+function setItemRef(i: number) {
+  return (el: Element | ComponentPublicInstance | null) => {
+    itemRefs.value[i] = el as HTMLLIElement | null
+  }
+}
+
 async function onArrowDown() {
-  if (suggestions.value.length === 0) return
+  if (!suggestions.value.length) return
   highlightedIndex.value = (highlightedIndex.value + 1) % suggestions.value.length
   await nextTick()
   itemRefs.value[highlightedIndex.value]?.scrollIntoView({ block: 'nearest' })
 }
 
 async function onArrowUp() {
-  if (suggestions.value.length === 0) return
+  if (!suggestions.value.length) return
   highlightedIndex.value =
     (highlightedIndex.value - 1 + suggestions.value.length) % suggestions.value.length
-
   await nextTick()
   itemRefs.value[highlightedIndex.value]?.scrollIntoView({ block: 'nearest' })
 }
 
 function onEnter() {
-  if (highlightedIndex.value !== -1) {
-    selectSuggestion(suggestions.value[highlightedIndex.value])
-  } else if (suggestions.value[0]) {
-    selectSuggestion(suggestions.value[0])
-  } else {
-    searchSymbol()
-  }
+  if (highlightedIndex.value !== -1) selectSuggestion(suggestions.value[highlightedIndex.value])
+  else if (suggestions.value[0]) selectSuggestion(suggestions.value[0])
+  else searchSymbol()
 }
 </script>

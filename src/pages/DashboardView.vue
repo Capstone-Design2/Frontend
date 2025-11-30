@@ -58,30 +58,6 @@
           </div>
         </div>
       </div>
-
-      <!-- <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div class="card p-4">
-          <h3 class="mb-2 font-medium">Strategy Quickstart</h3>
-          <p class="mb-3 text-sm text-slate-400">
-            Create rule-based strategies with SMA, EMA, RSI, MACD and more. Persisted locally.
-          </p>
-          <RouterLink class="btn-primary" to="/strategies/create">New Strategy</RouterLink>
-        </div>
-        <div class="card p-4">
-          <h3 class="mb-2 font-medium">Backtesting</h3>
-          <p class="mb-3 text-sm text-slate-400">
-            Run single-symbol backtests and review KPIs and trade logs.
-          </p>
-          <RouterLink class="btn-primary" to="/backtest/run">Run Backtest</RouterLink>
-        </div>
-        <div class="card p-4">
-          <h3 class="mb-2 font-medium">Paper Portfolio</h3>
-          <p class="mb-3 text-sm text-slate-400">
-            Monitor simulated equity and positions; controlled by Kill Switch.
-          </p>
-          <RouterLink class="btn-primary" to="/mypage">Open My Page</RouterLink>
-        </div>
-      </div> -->
     </section>
 
     <aside class="lg:col-span-3">
@@ -89,25 +65,6 @@
         <TradeWidget />
         <AccountBalanceWidget />
         <PositionsWidget />
-        <div class="card p-4">
-          <div class="mb-3 flex items-center justify-between">
-            <h3 class="font-medium">Market Overview</h3>
-            <button class="text-xs text-slate-400 hover:text-slate-200" @click="reload">
-              Reload
-            </button>
-          </div>
-          <div class="space-y-2">
-            <MiniTicker
-              v-for="t in market.miniTickers"
-              :key="t.key"
-              :title="t.key"
-              :data="t.series"
-            />
-            <p class="text-xs text-slate-500">
-              Some indices may be displayed as notes if not supported by the data source.
-            </p>
-          </div>
-        </div>
       </div>
     </aside>
   </div>
@@ -120,7 +77,6 @@ import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import PriceChart from '@/components/Chart/PriceChart.vue'
 import OverlayCanvas from '@/components/Chart/OverlayCanvas.vue'
 import ChartToolbar from '@/components/Chart/ChartToolbar.vue'
-import MiniTicker from '@/components/Sidebar/MiniTicker.vue'
 import TradeWidget from '@/components/Sidebar/TradeWidget.vue'
 import AccountBalanceWidget from '@/components/Sidebar/AccountBalanceWidget.vue'
 import PositionsWidget from '@/components/Sidebar/PositionsWidget.vue'
@@ -323,10 +279,6 @@ function onClear() {
   window.dispatchEvent(new CustomEvent('overlay:close'))
 }
 
-function reload() {
-  market.loadMiniTickers()
-}
-
 // ---- watch
 watch(timeframe, (tf) => {
   load(market.symbol, tf)
@@ -341,7 +293,6 @@ watch(
 // ---- mount
 onMounted(async () => {
   await load(market.symbol, timeframe.value)
-  market.loadMiniTickers()
 
   // WebSocket 연결 및 실시간 가격 구독
   market.subscribeToPrice(market.symbol)

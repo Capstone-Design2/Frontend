@@ -192,7 +192,6 @@ export async function getSeriesBackward(
       page_size: String(pageSize),
     })
 
-    console.debug('[Fetch]', `/tradingview/history?${qs.toString()}`)
     const { data } = await http.get<TVHistory>(`/tradingview/history?${qs.toString()}`, { signal })
 
     if (data.s === 'no_data') break

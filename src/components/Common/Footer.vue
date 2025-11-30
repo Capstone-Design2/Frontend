@@ -1,5 +1,5 @@
 <template>
-  <footer class="border-t border-slate-800 bg-slate-950/80">
+  <footer class="border-t border-slate-800 bg-slate-950/80 mt-4">
     <div class="mx-auto max-w-7xl px-4 py-6 text-sm text-slate-400">
       © {{ year }} CAPSLOCK. Educational use only.
     </div>
