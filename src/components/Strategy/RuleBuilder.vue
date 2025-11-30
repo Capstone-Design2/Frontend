@@ -1,18 +1,14 @@
 <template>
   <form @submit.prevent="onSave" aria-label="Strategy Builder" class="space-y-6">
-    <!-- 기존 전략 생성 UI -->
+    <!-- 기본 정보 -->
     <section class="card p-4">
       <div class="grid gap-4 md:grid-cols-2">
         <div>
           <label for="name" class="label">Name</label>
-          <input
-            id="name"
-            v-model="form.strategy_name"
-            class="input"
-            required
-            aria-required="true"
-          />
-          <p v-if="errors.name" class="mt-1 text-xs text-danger">{{ errors.name }}</p>
+          <input id="name" v-model="form.name" class="input" required aria-required="true" />
+          <p v-if="errors['name']" class="mt-1 text-xs text-danger">
+            {{ errors['name'] }}
+          </p>
         </div>
         <div>
           <label for="desc" class="label">Description</label>
@@ -21,105 +17,86 @@
       </div>
     </section>
 
+    <!-- Indicators -->
     <section class="card p-4">
       <h3 class="font-medium">Indicators</h3>
       <p class="mb-3 text-sm text-slate-400">
         Select a single indicator to include in the strategy.
       </p>
       <div class="grid gap-4 md:grid-cols-2">
+        <!-- SMA -->
         <div>
-          <label class="flex items-center gap-2"
-            ><input type="checkbox" v-model="smaToggle" aria-controls="sma-fields" /> SMA</label
-          >
-          <div v-if="smaToggle" id="sma-fields" class="mt-2 grid grid-cols-2 gap-2">
-            <label class="label" for="sma-period">SMA Period</label>
-            <input id="sma-period" type="number" class="input" v-model.number="smaPeriod" min="2" />
+          <label class="flex items-center gap-2">
+            <input type="checkbox" v-model="smaEnabled" /> SMA
+          </label>
+          <div v-if="smaEnabled" class="mt-2 grid grid-cols-2 gap-2">
+            <label class="label">SMA Period</label>
+            <input type="number" class="input" v-model.number="smaPeriod" min="2" />
           </div>
           <p v-if="errors['indicators.sma']" class="mt-1 text-xs text-danger">
             {{ errors['indicators.sma'] }}
           </p>
         </div>
+
+        <!-- EMA -->
         <div>
-          <label class="flex items-center gap-2"
-            ><input type="checkbox" v-model="emaToggle" aria-controls="ema-fields" /> EMA</label
-          >
-          <div v-if="emaToggle" id="ema-fields" class="mt-2 grid grid-cols-2 gap-2">
-            <label class="label" for="ema-period">EMA Period</label>
-            <input id="ema-period" type="number" class="input" v-model.number="emaPeriod" min="2" />
+          <label class="flex items-center gap-2">
+            <input type="checkbox" v-model="emaEnabled" /> EMA
+          </label>
+          <div v-if="emaEnabled" class="mt-2 grid grid-cols-2 gap-2">
+            <label class="label">EMA Period</label>
+            <input type="number" class="input" v-model.number="emaPeriod" min="2" />
           </div>
           <p v-if="errors['indicators.ema']" class="mt-1 text-xs text-danger">
             {{ errors['indicators.ema'] }}
           </p>
         </div>
+
+        <!-- RSI -->
         <div>
-          <label class="flex items-center gap-2"
-            ><input type="checkbox" v-model="rsiToggle" aria-controls="rsi-fields" /> RSI</label
-          >
-          <div v-if="rsiToggle" id="rsi-fields" class="mt-2 grid grid-cols-2 gap-2">
-            <label class="label" for="rsi-period">RSI Length</label>
-            <input id="rsi-period" type="number" class="input" v-model.number="rsiPeriod" min="2" />
+          <label class="flex items-center gap-2">
+            <input type="checkbox" v-model="rsiEnabled" /> RSI
+          </label>
+          <div v-if="rsiEnabled" class="mt-2 grid grid-cols-2 gap-2">
+            <label class="label">RSI</label>
+            <input type="number" class="input" v-model.number="rsiPeriod" min="2" />
           </div>
           <p v-if="errors['indicators.rsi']" class="mt-1 text-xs text-danger">
             {{ errors['indicators.rsi'] }}
           </p>
         </div>
+
+        <!-- MACD -->
         <div>
-          <label class="flex items-center gap-2"
-            ><input type="checkbox" v-model="macdToggle" aria-controls="macd-fields" /> MACD</label
-          >
-          <div v-if="macdToggle" id="macd-fields" class="mt-2 grid grid-cols-6 items-center gap-2">
-            <label class="label col-span-2" for="macd-fast">Fast</label>
-            <input
-              id="macd-fast"
-              type="number"
-              class="input col-span-4"
-              v-model.number="macdFast"
-              min="1"
-            />
-            <label class="label col-span-2" for="macd-slow">Slow</label>
-            <input
-              id="macd-slow"
-              type="number"
-              class="input col-span-4"
-              v-model.number="macdSlow"
-              min="2"
-            />
-            <label class="label col-span-2" for="macd-signal">Signal</label>
-            <input
-              id="macd-signal"
-              type="number"
-              class="input col-span-4"
-              v-model.number="macdSignal"
-              min="1"
-            />
+          <label class="flex items-center gap-2">
+            <input type="checkbox" v-model="macdEnabled" /> MACD
+          </label>
+          <div v-if="macdEnabled" class="mt-2 grid grid-cols-6 items-center gap-2">
+            <label class="label col-span-2">Fast</label>
+            <input type="number" class="input col-span-4" v-model.number="macdFast" />
+
+            <label class="label col-span-2">Slow</label>
+            <input type="number" class="input col-span-4" v-model.number="macdSlow" />
+
+            <label class="label col-span-2">Signal</label>
+            <input type="number" class="input col-span-4" v-model.number="macdSignal" />
           </div>
           <p v-if="errors['indicators.macd']" class="mt-1 text-xs text-danger">
             {{ errors['indicators.macd'] }}
           </p>
         </div>
+
+        <!-- BBands -->
         <div>
-          <label class="flex items-center gap-2"
-            ><input type="checkbox" v-model="bbandsToggle" aria-controls="bbands-fields" />
-            Bollinger Bands</label
-          >
-          <div v-if="bbandsToggle" id="bbands-fields" class="mt-2 grid grid-cols-2 gap-2">
-            <label class="label" for="bbands-period">Period</label>
-            <input
-              id="bbands-period"
-              type="number"
-              class="input"
-              v-model.number="bbandsPeriod"
-              min="2"
-            />
-            <label class="label" for="bbands-dev">Deviation</label>
-            <input
-              id="bbands-dev"
-              type="number"
-              class="input"
-              v-model.number="bbandsDev"
-              step="0.1"
-              min="0.1"
-            />
+          <label class="flex items-center gap-2">
+            <input type="checkbox" v-model="bbandsEnabled" /> Bollinger Bands
+          </label>
+          <div v-if="bbandsEnabled" class="mt-2 grid grid-cols-2 gap-2">
+            <label class="label">Period</label>
+            <input type="number" class="input" v-model.number="bbandsPeriod" />
+
+            <label class="label">Deviation</label>
+            <input type="number" class="input" step="0.1" v-model.number="bbandsDev" />
           </div>
           <p v-if="errors['indicators.bbands']" class="mt-1 text-xs text-danger">
             {{ errors['indicators.bbands'] }}
@@ -128,82 +105,64 @@
       </div>
     </section>
 
+    <!-- Recommended Strategies -->
     <section v-if="filteredStrategies.length > 0" class="card p-4">
       <h3 class="mb-3 font-medium">Recommended Strategies</h3>
+
       <div class="grid gap-4 md:grid-cols-2">
         <div>
           <p class="mb-2 text-sm text-slate-300">Buy Conditions</p>
-          <label class="mb-1 flex items-center gap-2"
+          <label class="flex gap-2"
             ><input type="checkbox" v-model="buy.smaCross" /> SMA crosses above price</label
           >
-          <label class="mb-1 flex items-center gap-2"
+          <label class="flex gap-2"
             ><input type="checkbox" v-model="buy.rsiOversold" /> RSI below 30</label
           >
-          <label class="mb-1 flex items-center gap-2"
+          <label class="flex gap-2"
             ><input type="checkbox" v-model="buy.macdBull" /> MACD bullish crossover</label
           >
         </div>
+
         <div>
           <p class="mb-2 text-sm text-slate-300">Sell Conditions</p>
-          <label class="mb-1 flex items-center gap-2"
+          <label class="flex gap-2"
             ><input type="checkbox" v-model="sell.smaCross" /> SMA crosses below price</label
           >
-          <label class="mb-1 flex items-center gap-2"
+          <label class="flex gap-2"
             ><input type="checkbox" v-model="sell.rsiOverbought" /> RSI above 70</label
           >
-          <label class="mb-1 flex items-center gap-2"
+          <label class="flex gap-2"
             ><input type="checkbox" v-model="sell.macdBear" /> MACD bearish crossover</label
           >
         </div>
       </div>
+
+      <!-- stopLoss / takeProfit / positionSizing -->
       <div class="mt-4 grid gap-4 md:grid-cols-3">
         <div>
-          <label for="sl" class="label">Stop-loss %</label>
-          <input
-            id="sl"
-            type="number"
-            class="input"
-            v-model.number="form.rules.stopLoss"
-            step="0.1"
-            min="0"
-          />
+          <label class="label">Stop-loss %</label>
+          <input type="number" class="input" v-model.number="form.rules.stopLoss" />
         </div>
+
         <div>
-          <label for="tp" class="label">Take-profit %</label>
-          <input
-            id="tp"
-            type="number"
-            class="input"
-            v-model.number="form.rules.takeProfit"
-            step="0.1"
-            min="0"
-          />
+          <label class="label">Take-profit %</label>
+          <input type="number" class="input" v-model.number="form.rules.takeProfit" />
         </div>
+
         <div>
-          <label class="label" for="ps-mode">Position sizing</label>
+          <label class="label">Position sizing</label>
           <div class="flex gap-2">
-            <select
-              id="ps-mode"
-              class="input"
-              v-model="form.positionSizing.mode"
-              aria-label="Position sizing mode"
-            >
-              <option value="fixed">Fixed amount</option>
+            <select class="input" v-model="form.positionSizing.mode">
+              <option value="fixed">Fixed</option>
               <option value="percent">% Equity</option>
             </select>
-            <input
-              type="number"
-              class="input"
-              v-model.number="form.positionSizing.value"
-              min="0"
-              step="0.1"
-              aria-label="Position sizing value"
-            />
+            <input type="number" class="input" v-model.number="form.positionSizing.value" />
           </div>
         </div>
       </div>
     </section>
 
+    <!-- 버튼 -->
     <section class="flex items-center justify-between">
       <div class="flex gap-2">
         <button type="button" class="btn-outline" @click="applyPreset('conservative')">
@@ -214,301 +173,229 @@
           Aggressive
         </button>
       </div>
-      <div class="flex gap-2">
-        <button type="submit" class="btn-primary" :disabled="!isValid">Save Strategy</button>
-      </div>
+      <button type="submit" class="btn-primary" :disabled="!isValid">Save Strategy</button>
     </section>
   </form>
 </template>
 
 <script setup lang="ts">
 import { reactive, computed, watch, ref } from 'vue'
-import type { Strategy } from '@/types/Strategy'
-import { strategySchema, STRATEGY_SCHEMA_VERSION } from '@/utils/validation'
+import { strategySchema, STRATEGY_SCHEMA_VERSION, type StrategyInput } from '@/utils/validation'
 
-interface Emits {
-  (e: 'save', value: Strategy): void
-}
-const emit = defineEmits<Emits>()
+const emit = defineEmits<{ (e: 'save', value: StrategyInput): void }>()
 
-const props = defineProps<{ modelValue?: Strategy | null; presets: Partial<Strategy>[] }>()
+const props = defineProps<{
+  modelValue?: StrategyInput | null
+  presets: Partial<StrategyInput>[]
+}>()
 
-const filteredStrategies = ref<Partial<Strategy>[]>([])
-const selectedPreset = ref<Partial<Strategy> | null>(null)
-
-type IndicatorKey = 'sma' | 'ema' | 'rsi' | 'macd' | 'bbands'
-const indicatorOrder: IndicatorKey[] = ['sma', 'ema', 'rsi', 'macd', 'bbands']
-
-function isIndicatorKey(value: string): value is IndicatorKey {
-  return indicatorOrder.includes(value as IndicatorKey)
-}
-
-// simple reentrancy guard to avoid recursive reactive updates
-let _updating = false
-function withLock<T>(fn: () => T) {
-  if (_updating) return undefined as unknown as T
-  _updating = true
-  try {
-    return fn()
-  } finally {
-    _updating = false
-  }
-}
-
-const defaults: Strategy = {
+/* ------------------ form (camelCase) ------------------ */
+const form = reactive<StrategyInput>({
   schemaVersion: STRATEGY_SCHEMA_VERSION,
-  strategy_name: '',
+  name: '',
   description: '',
   indicators: {},
-  rules: { buy: [], sell: [] },
+  rules: { buy: [], sell: [], stopLoss: 0, takeProfit: 0 },
   positionSizing: { mode: 'fixed', value: 0 },
+  ...(props.modelValue || {}),
+})
+
+/* ------------------ indicator helpers ------------------ */
+type IndicatorType = 'sma' | 'ema' | 'rsi' | 'macd' | 'bbands'
+
+function defaultIndicator(t: IndicatorType) {
+  return (
+    {
+      sma: { enabled: true, period: 20 },
+      ema: { enabled: true, period: 20 },
+      rsi: { enabled: true, period: 14 },
+      macd: { enabled: true, fast: 12, slow: 26, signal: 9 },
+      bbands: { enabled: true, period: 20, dev: 2 },
+    }[t] || { enabled: true }
+  )
 }
 
-const form = reactive<Strategy>({ ...defaults, ...(props.modelValue || {}) })
-
-function removeIndicator(key: IndicatorKey) {
-  if (key === 'sma') delete form.indicators.sma
-  else if (key === 'ema') delete form.indicators.ema
-  else if (key === 'rsi') delete form.indicators.rsi
-  else if (key === 'macd') delete form.indicators.macd
-  else if (key === 'bbands') delete form.indicators.bbands
+function setSingleIndicator(t: IndicatorType | null) {
+  if (!t) {
+    form.indicators = {}
+    return
+  }
+  form.indicators = { [t]: defaultIndicator(t) } as any
 }
 
-function clearIndicators(except?: IndicatorKey) {
-  indicatorOrder.forEach((key) => {
-    if (key !== except) removeIndicator(key)
-  })
-}
-
-function ensureSingleIndicator() {
-  const active = indicatorOrder.filter((key) => form.indicators[key]?.enabled)
-  if (active.length <= 1) return
-  const [keep] = active
-  withLock(() => clearIndicators(keep))
-}
-
-ensureSingleIndicator()
-
-watch(
-  form.indicators,
-  (newIndicators) => {
-    const activeIndicatorKeys = indicatorOrder.filter((key) => newIndicators[key]?.enabled)
-
-    if (activeIndicatorKeys.length > 1) {
-      const [keep] = activeIndicatorKeys
-      withLock(() => clearIndicators(keep))
-    }
-
-    const currentActive = indicatorOrder.filter((key) => form.indicators[key]?.enabled)
-    if (currentActive.length === 0) {
-      filteredStrategies.value = []
-      selectedPreset.value = null
-      return
-    }
-
-    filteredStrategies.value = props.presets.filter((preset) => {
-      if (!preset.indicators || !Array.isArray(preset.indicators)) return false
-      const presetIndicatorTypes = preset.indicators
-        .map((indicator) => (indicator.type === 'bollinger_bands' ? 'bbands' : indicator.type))
-        .filter(isIndicatorKey)
-      return presetIndicatorTypes.includes(currentActive[0])
-    })
-    selectedPreset.value = null
-  },
-  { deep: true },
-)
-
-function selectPreset(preset: Partial<Strategy>) {
-  selectedPreset.value = preset
-}
-
-// toggles implemented as computed getters/setters to avoid separate reactive object and loops
-const smaToggle = computed({
+/* ------------------ indicator toggles ------------------ */
+const smaEnabled = computed({
   get: () => !!form.indicators.sma,
-  set: (v: boolean) => {
-    if (v) form.indicators.sma = form.indicators.sma ?? { enabled: true, period: 20 }
-    else delete form.indicators.sma
-  },
+  set: (v) => (v ? setSingleIndicator('sma') : setSingleIndicator(null)),
 })
-const emaToggle = computed({
+const emaEnabled = computed({
   get: () => !!form.indicators.ema,
-  set: (v: boolean) => {
-    if (v) form.indicators.ema = form.indicators.ema ?? { enabled: true, period: 20 }
-    else delete form.indicators.ema
-  },
+  set: (v) => (v ? setSingleIndicator('ema') : setSingleIndicator(null)),
 })
-const rsiToggle = computed({
+const rsiEnabled = computed({
   get: () => !!form.indicators.rsi,
-  set: (v: boolean) => {
-    if (v) form.indicators.rsi = form.indicators.rsi ?? { enabled: true, period: 14 }
-    else delete form.indicators.rsi
-  },
+  set: (v) => (v ? setSingleIndicator('rsi') : setSingleIndicator(null)),
 })
-const macdToggle = computed({
+const macdEnabled = computed({
   get: () => !!form.indicators.macd,
-  set: (v: boolean) => {
-    if (v)
-      form.indicators.macd = form.indicators.macd ?? {
-        enabled: true,
-        fast: 12,
-        slow: 26,
-        signal: 9,
-      }
-    else delete form.indicators.macd
-  },
+  set: (v) => (v ? setSingleIndicator('macd') : setSingleIndicator(null)),
 })
-const bbandsToggle = computed({
+const bbandsEnabled = computed({
   get: () => !!form.indicators.bbands,
-  set: (v: boolean) => {
-    if (v) form.indicators.bbands = form.indicators.bbands ?? { enabled: true, period: 20, dev: 2 }
-    else delete form.indicators.bbands
-  },
+  set: (v) => (v ? setSingleIndicator('bbands') : setSingleIndicator(null)),
 })
 
-// params proxies
+/* ------------------ indicator params ------------------ */
 const smaPeriod = computed({
   get: () => form.indicators.sma?.period ?? 20,
-  set: (v: number) => {
-    form.indicators.sma = form.indicators.sma ?? { enabled: true, period: v }
-    form.indicators.sma.period = v
+  set: (v) => {
+    if (!form.indicators.sma) setSingleIndicator('sma')
+    form.indicators.sma!.period = v
   },
 })
 const emaPeriod = computed({
   get: () => form.indicators.ema?.period ?? 20,
-  set: (v: number) => {
-    form.indicators.ema = form.indicators.ema ?? { enabled: true, period: v }
-    form.indicators.ema.period = v
+  set: (v) => {
+    if (!form.indicators.ema) setSingleIndicator('ema')
+    form.indicators.ema!.period = v
   },
 })
 const rsiPeriod = computed({
   get: () => form.indicators.rsi?.period ?? 14,
-  set: (v: number) => {
-    form.indicators.rsi = form.indicators.rsi ?? { enabled: true, period: v }
-    form.indicators.rsi.period = v
+  set: (v) => {
+    if (!form.indicators.rsi) setSingleIndicator('rsi')
+    form.indicators.rsi!.period = v
   },
 })
 const macdFast = computed({
   get: () => form.indicators.macd?.fast ?? 12,
-  set: (v: number) => {
-    const cur = form.indicators.macd ?? { enabled: true, fast: 12, slow: 26, signal: 9 }
-    form.indicators.macd = { ...cur, enabled: true, fast: v }
+  set: (v) => {
+    if (!form.indicators.macd) setSingleIndicator('macd')
+    form.indicators.macd!.fast = v
   },
 })
 const macdSlow = computed({
   get: () => form.indicators.macd?.slow ?? 26,
-  set: (v: number) => {
-    const cur = form.indicators.macd ?? { enabled: true, fast: 12, slow: 26, signal: 9 }
-    form.indicators.macd = { ...cur, enabled: true, slow: v }
+  set: (v) => {
+    if (!form.indicators.macd) setSingleIndicator('macd')
+    form.indicators.macd!.slow = v
   },
 })
 const macdSignal = computed({
   get: () => form.indicators.macd?.signal ?? 9,
-  set: (v: number) => {
-    const cur = form.indicators.macd ?? { enabled: true, fast: 12, slow: 26, signal: 9 }
-    form.indicators.macd = { ...cur, enabled: true, signal: v }
+  set: (v) => {
+    if (!form.indicators.macd) setSingleIndicator('macd')
+    form.indicators.macd!.signal = v
   },
 })
 const bbandsPeriod = computed({
   get: () => form.indicators.bbands?.period ?? 20,
-  set: (v: number) => {
-    const cur = form.indicators.bbands ?? { enabled: true, period: 20, dev: 2 }
-    form.indicators.bbands = { ...cur, enabled: true, period: v }
+  set: (v) => {
+    if (!form.indicators.bbands) setSingleIndicator('bbands')
+    form.indicators.bbands!.period = v
   },
 })
 const bbandsDev = computed({
   get: () => form.indicators.bbands?.dev ?? 2,
-  set: (v: number) => {
-    const cur = form.indicators.bbands ?? { enabled: true, period: 20, dev: 2 }
-    form.indicators.bbands = { ...cur, enabled: true, dev: v }
+  set: (v) => {
+    if (!form.indicators.bbands) setSingleIndicator('bbands')
+    form.indicators.bbands!.dev = v
   },
 })
 
-// rule toggles -> strings
+/* ------------------ buy/sell rules ------------------ */
 const buy = reactive({ smaCross: false, rsiOversold: false, macdBull: false })
 const sell = reactive({ smaCross: false, rsiOverbought: false, macdBear: false })
 
-const errors = reactive<Record<string, string>>({})
-const isValid = computed(() => {
-  try {
-    const parsed = strategySchema.parse(form)
-    Object.keys(errors).forEach((k) => delete errors[k])
-    return true
-  } catch (e: any) {
-    Object.keys(errors).forEach((k) => delete errors[k])
-    for (const issue of e.issues || []) {
-      const path = issue.path.join('.')
-      errors[path || 'root'] = issue.message
-    }
-    return false
-  }
-})
-
-// keep form.rules in sync with buy/sell toggles without mutating inside computed
 watch(
-  () => [
-    buy.smaCross,
-    buy.rsiOversold,
-    buy.macdBull,
-    sell.smaCross,
-    sell.rsiOverbought,
-    sell.macdBear,
-  ],
+  () => ({ ...buy, ...sell }),
   () => {
-    if (_updating) return
-    const buys: string[] = []
-    if (buy.smaCross) buys.push('smaCrossPriceUp')
-    if (buy.rsiOversold) buys.push('rsi<30')
-    if (buy.macdBull) buys.push('macdBull')
-    const sells: string[] = []
-    if (sell.smaCross) sells.push('smaCrossPriceDown')
-    if (sell.rsiOverbought) sells.push('rsi>70')
-    if (sell.macdBear) sells.push('macdBear')
-    // only update if changed to avoid triggering unnecessary reactive cycles
-    const same = (a: string[], b: string[]) =>
-      a.length === b.length && a.every((v, i) => v === b[i])
-    if (!same(form.rules.buy || [], buys)) withLock(() => (form.rules.buy = buys))
-    if (!same(form.rules.sell || [], sells)) withLock(() => (form.rules.sell = sells))
+    form.rules.buy = []
+    if (buy.smaCross) form.rules.buy.push('smaCrossPriceUp')
+    if (buy.rsiOversold) form.rules.buy.push('rsi<30')
+    if (buy.macdBull) form.rules.buy.push('macdBull')
+
+    form.rules.sell = []
+    if (sell.smaCross) form.rules.sell.push('smaCrossPriceDown')
+    if (sell.rsiOverbought) form.rules.sell.push('rsi>70')
+    if (sell.macdBear) form.rules.sell.push('macdBear')
   },
-  { immediate: false },
 )
 
-function applyPreset(kind: 'conservative' | 'neutral' | 'aggressive') {
-  return withLock(() => {
-    if (kind === 'conservative') {
-      smaToggle.value = true
-      smaPeriod.value = 50
-      rsiToggle.value = true
-      rsiPeriod.value = 14
-      buy.smaCross = true
-      sell.smaCross = true
-      form.positionSizing = { mode: 'percent', value: 5 }
-      form.rules.stopLoss = 5
-      form.rules.takeProfit = 10
-    } else if (kind === 'neutral') {
-      emaToggle.value = true
-      emaPeriod.value = 21
-      macdToggle.value = true
-      macdFast.value = 12
-      macdSlow.value = 26
-      macdSignal.value = 9
-      buy.macdBull = true
-      sell.macdBear = true
-      form.positionSizing = { mode: 'percent', value: 10 }
-      form.rules.stopLoss = 7
-      form.rules.takeProfit = 14
-    } else {
-      bbandsToggle.value = true
-      bbandsPeriod.value = 20
-      bbandsDev.value = 2
-      rsiToggle.value = true
-      rsiPeriod.value = 7
-      buy.rsiOversold = true
-      sell.rsiOverbought = true
-      form.positionSizing = { mode: 'percent', value: 20 }
-      form.rules.stopLoss = 8
-      form.rules.takeProfit = 12
+/* ------------------ validation ------------------ */
+const errors = reactive<Record<string, string>>({})
+const isValid = ref(false)
+
+watch(
+  () => form,
+  (value) => {
+    try {
+      strategySchema.parse(value)
+      Object.keys(errors).forEach((k) => delete errors[k])
+      isValid.value = true
+    } catch (err: any) {
+      Object.keys(errors).forEach((k) => delete errors[k])
+      for (const issue of err.issues || []) {
+        const key = issue.path.join('.')
+        errors[key] = issue.message
+      }
+      isValid.value = false
     }
-  })
+  },
+  { deep: true, immediate: true },
+)
+
+/* ------------------ presets ------------------ */
+const filteredStrategies = ref<Partial<StrategyInput>[]>([])
+
+watch(
+  () => (Object.entries(form.indicators)[0]?.[0] as IndicatorType | undefined) ?? null,
+  (active) => {
+    if (!active) {
+      filteredStrategies.value = []
+      return
+    }
+    filteredStrategies.value = props.presets.filter((preset) => {
+      const arr = (preset as any).indicators
+      if (!Array.isArray(arr)) return false
+      const mapped = arr.map((i: any) => (i.type === 'bollinger_bands' ? 'bbands' : i.type))
+      return mapped.includes(active)
+    })
+  },
+  { immediate: true },
+)
+
+/* ------------------ presets 버튼 ------------------ */
+function applyPreset(kind: 'conservative' | 'neutral' | 'aggressive') {
+  if (kind === 'conservative') {
+    setSingleIndicator('sma')
+    smaPeriod.value = 50
+    buy.smaCross = true
+    sell.smaCross = true
+    form.positionSizing = { mode: 'percent', value: 5 }
+    form.rules.stopLoss = 5
+    form.rules.takeProfit = 10
+  } else if (kind === 'neutral') {
+    setSingleIndicator('ema')
+    emaPeriod.value = 21
+    macdEnabled.value = true
+    buy.macdBull = true
+    sell.macdBear = true
+    form.positionSizing = { mode: 'percent', value: 10 }
+    form.rules.stopLoss = 7
+    form.rules.takeProfit = 14
+  } else {
+    setSingleIndicator('bbands')
+    bbandsPeriod.value = 20
+    bbandsDev.value = 2
+    rsiEnabled.value = true
+    rsiPeriod.value = 7
+    buy.rsiOversold = true
+    sell.rsiOverbought = true
+    form.positionSizing = { mode: 'percent', value: 20 }
+    form.rules.stopLoss = 8
+    form.rules.takeProfit = 12
+  }
 }
 
 function onSave() {
