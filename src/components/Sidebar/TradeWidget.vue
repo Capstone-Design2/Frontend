@@ -33,36 +33,56 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { usePortfolioStore } from '@/stores/usePortfolioStore'
+import { ref, computed, onMounted } from 'vue'
 import { useMarketStore } from '@/stores/useMarketStore'
 import { useUiStore } from '@/stores/useUiStore'
+import { submitOrder, createAccount } from '@/services/paperTradingApi'
 
-const portfolioStore = usePortfolioStore()
 const marketStore = useMarketStore()
 const uiStore = useUiStore()
 
 const quantity = ref(1)
+const isSubmitting = ref(false)
 
 const symbol = computed(() => marketStore.symbol)
 const price = computed(() => marketStore.livePrice)
-const isValid = computed(() => quantity.value > 0 && price.value !== null)
+const isValid = computed(() => quantity.value > 0 && !isSubmitting.value)
+
+// 계좌 자동 생성
+onMounted(async () => {
+  try {
+    await createAccount(10000000)
+  } catch (e) {
+    // 이미 계좌가 있으면 무시
+    console.log('[TradeWidget] Account already exists or created')
+  }
+})
 
 async function handleTrade(type: 'buy' | 'sell') {
-  if (!isValid.value || !price.value) return
+  if (!isValid.value) return
+
+  isSubmitting.value = true
 
   try {
-    if (type === 'buy') {
-      portfolioStore.executeBuy(symbol.value, quantity.value, price.value)
-    } else {
-      portfolioStore.executeSell(symbol.value, quantity.value, price.value)
-    }
+    const order = await submitOrder({
+      ticker_code: symbol.value,
+      side: type.toUpperCase() as 'BUY' | 'SELL',
+      quantity: quantity.value,
+      order_type: 'MARKET',
+    })
+
     uiStore.pushToast({
       type: 'success',
-      message: `Successfully ${type} ${quantity.value} ${symbol.value}`,
+      message: `${type === 'buy' ? '매수' : '매도'} 주문이 제출되었습니다 (주문 ID: ${order.order_id})`,
     })
+
+    // 주문 후 수량 초기화
+    quantity.value = 1
   } catch (e: any) {
-    uiStore.pushToast({ type: 'error', message: e.message })
+    const errorMsg = e.response?.data?.detail || e.message || '주문 처리 중 오류가 발생했습니다'
+    uiStore.pushToast({ type: 'error', message: errorMsg })
+  } finally {
+    isSubmitting.value = false
   }
 }
 </script>
