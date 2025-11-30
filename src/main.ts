@@ -8,7 +8,6 @@ import '@/styles/index.css'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { usePortfolioStore } from '@/stores/usePortfolioStore'
 import { useBacktestStore } from '@/stores/useBacktestStore'
-import { useStrategyStore } from '@/stores/useStrategyStore' // ← 존재 가정
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -25,8 +24,5 @@ portfolio.restore?.()
 
 const backtest = useBacktestStore()
 backtest.restore?.()
-
-const strategies = useStrategyStore()
-strategies.restore?.()
 
 app.mount('#app')
