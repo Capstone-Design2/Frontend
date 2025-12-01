@@ -1,10 +1,8 @@
 <template>
   <div class="flex flex-col h-full rounded-xl overflow-hidden bg-slate-930">
-    <!-- Messages -->
     <div ref="listRef" class="flex-1 overflow-y-auto p-4 space-y-4">
-      <!-- 각 메시지 렌더링 -->
       <div v-for="(msg, i) in messages" :key="i" class="w-full flex">
-        <!-- User Message -->
+        <!-- User 질문 -->
         <div
           v-if="msg.type === 'user'"
           class="ml-auto max-w-[70%] px-4 py-2 rounded-xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
@@ -12,7 +10,7 @@
           {{ msg.text }}
         </div>
 
-        <!-- Bot Loading Bubble -->
+        <!-- Bot 로딩 -->
         <div
           v-else-if="msg.typing === true"
           class="mr-auto max-w-[70%] px-4 py-2 bg-slate-700 text-slate-400 rounded-xl italic opacity-70"
@@ -20,14 +18,14 @@
           작성 중...
         </div>
 
-        <!-- Bot Normal Response -->
+        <!-- Bot 응답 -->
         <div v-else class="mr-auto max-w-[70%] px-4 py-2 bg-slate-700 text-slate-200 rounded-xl">
-          <!-- 기본 텍스트 응답 (chat) -->
+          <!-- 기본 응답 -->
           <template v-if="msg.status === 'chat'">
             {{ msg.text }}
           </template>
 
-          <!-- 전략 관련 응답 (in_progress, complete 등) -->
+          <!-- 전략 관련 응답 -->
           <template v-else>
             <div class="mb-3">{{ msg.text }}</div>
 
@@ -86,8 +84,6 @@
           </template>
         </div>
       </div>
-
-      <!-- 빈 공간 확보 -->
       <div class="h-20"></div>
     </div>
   </div>
@@ -104,7 +100,6 @@ const emit = defineEmits(['confirmStrategy', 'rejectStrategy'])
 
 const listRef = ref<HTMLElement | null>(null)
 
-/* 자동 스크롤 */
 watch(
   () => props.messages,
   () => {
@@ -117,7 +112,6 @@ watch(
   { deep: true },
 )
 
-/* 조건 이름 라벨링 */
 function conditionLabel(key: string) {
   switch (key) {
     case 'indicators':
@@ -135,7 +129,6 @@ function conditionLabel(key: string) {
   }
 }
 
-/* JSON 포맷팅 */
 function formatStrategy(strategy: string | object) {
   try {
     const parsed = typeof strategy === 'string' ? JSON.parse(strategy) : strategy

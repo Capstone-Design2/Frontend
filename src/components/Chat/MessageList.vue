@@ -10,7 +10,7 @@
     <!-- Empty -->
     <EmptyChatView v-else-if="messages.length === 0" />
 
-    <!-- Active Messages -->
+    <!-- Active -->
     <ActiveChatView
       v-else
       :messages="messages"
@@ -32,7 +32,6 @@ const props = defineProps({
 
 const listRef = ref(null)
 
-// 마지막 메시지로 자동 스크롤
 watch(
   () => props.messages,
   () => {

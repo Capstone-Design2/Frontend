@@ -269,7 +269,7 @@
 <script setup lang="ts">
 import { reactive, computed, ref, watch } from 'vue'
 import ConditionGroup from './ConditionGroup.vue'
-import { validateStrategy } from './strategyValidator'
+import { validateStrategy } from '../../utils/strategyValidator'
 
 type IndicatorType = 'SMA' | 'EMA' | 'RSI' | 'MACD' | 'BBANDS' | 'ATR' | 'STOCH'
 
