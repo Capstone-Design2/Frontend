@@ -1,11 +1,15 @@
 <template>
-  <div class="mx-auto max-w-5xl px-4 pt-6">
-    <h1 class="mb-4 text-xl font-semibold">Create Strategy</h1>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-      <RuleBuilder :presets="presets" @save="onSave" />
-      <section class="card">
-        <ChatPanel />
-      </section>
+  <div class="card p-6 h-[calc(100vh-8rem)] overflow-hidden">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+      <!-- LEFT -->
+      <div class="h-full overflow-y-auto pr-3">
+        <RuleBuilder :presets="presets" @save="onSave" />
+      </div>
+
+      <!-- RIGHT -->
+      <div class="sticky top-20 h-[calc(100vh-10rem)]">
+        <ChatPanel class="h-full rounded-xl" />
+      </div>
     </div>
   </div>
 </template>
@@ -13,26 +17,16 @@
 <script setup lang="ts">
 import RuleBuilder from '@/components/Strategy/RuleBuilder.vue'
 import ChatPanel from '@/components/Chat/ChatPanel.vue'
-import type { Strategy } from '@/types/Strategy'
-import { useStrategyStore } from '@/stores/useStrategyStore'
 import { useRouter } from 'vue-router'
+import { useStrategyStore } from '@/stores/useStrategyStore'
 
 const router = useRouter()
 const strategies = useStrategyStore()
 
-// presets 추가 필수
-const presets: Partial<Strategy>[] = []
+const presets = []
 
-async function onSave(payload: Partial<Strategy>) {
-  try {
-    await strategies.create(payload)
-    router.push('/strategies')
-  } catch (error) {
-    console.error('Failed to save strategy:', error)
-  }
+async function onSave(payload) {
+  await strategies.create(payload)
+  router.push('/strategies')
 }
 </script>
-
-<style scoped>
-/* 필요하면 작성 */
-</style>
