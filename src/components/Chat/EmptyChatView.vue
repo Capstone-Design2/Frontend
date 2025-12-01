@@ -54,6 +54,8 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 // 🔥 Enter = 전송 / Shift+Enter = 줄바꿈
 function handleKeyDown(e: KeyboardEvent) {
+  if (e.isComposing) return
+
   // Shift + Enter → 기본 줄바꿈 허용
   if (e.key === 'Enter' && e.shiftKey) {
     return

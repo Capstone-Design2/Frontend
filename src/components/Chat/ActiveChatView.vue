@@ -160,6 +160,7 @@ function autoGrow() {
 }
 
 function handleKeyDown(e: KeyboardEvent) {
+  if (e.isComposing) return
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     e.stopPropagation()
