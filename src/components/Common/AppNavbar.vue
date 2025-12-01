@@ -4,7 +4,12 @@
       <!-- Left -->
       <div class="flex items-center gap-8">
         <RouterLink to="/" class="flex items-center gap-2">
-          <span class="logo">CAPSLOCK</span>
+          <span class="logo">
+            <span class="c">C</span>
+            <span class="aps">aps</span>
+            <span class="l">L</span>
+            <span class="ock">ock</span>
+          </span>
         </RouterLink>
         <nav class="hidden items-center gap-6 md:flex">
           <RouterLink class="text-slate-300 hover:text-white" to="/">Dashboard</RouterLink>
@@ -287,6 +292,41 @@ function onEnter() {
   font-family: 'Satoshi', 'Inter', sans-serif;
   font-weight: 900;
   font-size: 34px;
-  letter-spacing: 4px;
+  display: flex;
+}
+
+.logo span {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.logo .c,
+.logo .l {
+  font-size: 42px;
+  line-height: 0.92;
+  position: relative;
+  top: 8px;
+}
+
+.logo .c {
+  margin-right: 0.5px;
+}
+.logo .aps {
+  margin-right: 2px;
+}
+.logo .l {
+  margin-right: -1px;
+  top: 6.5px;
+}
+
+.logo .c::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  bottom: 19.5px;
+  width: 43px;
+  height: 2px;
+  background: rgb(255, 255, 255);
+  border-radius: 2px;
 }
 </style>
