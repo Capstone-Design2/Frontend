@@ -45,7 +45,14 @@ export const useMarketStore = defineStore('market', {
     subscribeToPrice(tickerCode: string) {
       const ws = getWebSocketService()
 
-      ws.subscribe(tickerCode, (event: PriceEvent) => {
+      // TradingView 형식(KRX:005930)에서 KIS 코드(005930)만 추출
+      const kisCode = tickerCode.includes(':')
+        ? tickerCode.split(':')[1]
+        : tickerCode
+
+      console.log(`[MarketStore] WebSocket 구독: ${tickerCode} → KIS 코드: ${kisCode}`)
+
+      ws.subscribe(kisCode, (event: PriceEvent) => {
         this.realtimePrice = {
           currentPrice: parseFloat(event.stck_prpr),
           change: parseFloat(event.prdy_vrss),
@@ -57,6 +64,8 @@ export const useMarketStore = defineStore('market', {
 
         // livePrice도 업데이트 (기존 코드와의 호환성)
         this.livePrice = parseFloat(event.stck_prpr)
+
+        console.log(`[MarketStore] 실시간 시세 수신: ${kisCode} = ₩${this.livePrice.toLocaleString()}`)
       })
 
       this.wsConnected = ws.isConnected()
@@ -68,7 +77,12 @@ export const useMarketStore = defineStore('market', {
     unsubscribeFromPrice() {
       const ws = getWebSocketService()
       if (this.symbol) {
-        ws.unsubscribe(this.symbol)
+        // TradingView 형식(KRX:005930)에서 KIS 코드(005930)만 추출
+        const kisCode = this.symbol.includes(':')
+          ? this.symbol.split(':')[1]
+          : this.symbol
+        ws.unsubscribe(kisCode)
+        console.log(`[MarketStore] WebSocket 구독 해제: ${kisCode}`)
       }
       this.realtimePrice = null
       this.wsConnected = false

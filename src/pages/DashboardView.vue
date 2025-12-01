@@ -190,6 +190,22 @@ function tfToResolution(tf: Timeframe): '1' | '5' | '15' | '60' | 'D' {
   }
 }
 
+// 타임프레임별 캔들 지속시간 (초)
+function getCandleDuration(tf: Timeframe): number {
+  switch (tf) {
+    case '1min':
+      return 60
+    case '5min':
+      return 5 * 60
+    case '15min':
+      return 15 * 60
+    case '60min':
+      return 60 * 60
+    case '1day':
+      return 24 * 60 * 60
+  }
+}
+
 // 공통 history loader (UDF)
 let currentReq = 0 // 요청 토큰
 
@@ -288,6 +304,50 @@ watch(
   (sym) => {
     load(sym, timeframe.value)
   },
+)
+
+// WebSocket 실시간 가격 업데이트 반영
+watch(
+  () => market.realtimePrice,
+  (realtime) => {
+    if (realtime && candles.value.length > 0) {
+      // 차트 헤더의 가격 업데이트
+      market.livePrice = realtime.currentPrice
+
+      // 마지막 캔들 업데이트 (실시간 시세 반영)
+      const lastCandle = candles.value[candles.value.length - 1]
+      const now = Math.floor(Date.now() / 1000) as UTCTimestamp
+
+      // 같은 시간대(타임프레임)의 캔들이면 업데이트, 아니면 새 캔들 추가
+      const candleDuration = getCandleDuration(timeframe.value)
+      const lastCandleTime = Number(lastCandle.time)
+      const timeDiff = now - lastCandleTime
+
+      if (timeDiff < candleDuration) {
+        // 기존 캔들 업데이트
+        lastCandle.close = realtime.currentPrice
+        lastCandle.high = Math.max(lastCandle.high, realtime.currentPrice)
+        lastCandle.low = Math.min(lastCandle.low, realtime.currentPrice)
+        lastCandle.volume = realtime.volume
+      } else {
+        // 새 캔들 추가
+        candles.value.push({
+          time: now,
+          open: realtime.currentPrice,
+          high: realtime.currentPrice,
+          low: realtime.currentPrice,
+          close: realtime.currentPrice,
+          volume: realtime.volume,
+        })
+      }
+
+      // 차트 업데이트 트리거
+      if (priceChart.value) {
+        priceChart.value.$forceUpdate?.()
+      }
+    }
+  },
+  { deep: true },
 )
 
 // ---- mount
