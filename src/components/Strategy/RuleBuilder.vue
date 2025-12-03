@@ -71,8 +71,12 @@
           <h2 class="text-lg font-semibold">Indicators</h2>
         </div>
         <div class="flex flex-wrap gap-2 text-xs text-slate-400">
-          <span class="rounded-full bg-slate-800 px-2 py-1">SMA / EMA / RSI / MACD / BBANDS</span>
-          <span class="rounded-full bg-slate-800 px-2 py-1">PRICE 는 조건에서 직접 사용</span>
+          <span class="rounded-full bg-slate-800 px-2 py-1"
+            >SMA / EMA / RSI / MACD / BBANDS / ATR / STOCH</span
+          >
+          <span class="rounded-full bg-slate-800 px-2 py-1"
+            >PRICE (close/open/high/low/volume)는 조건에서 직접 사용</span
+          >
         </div>
       </div>
 
@@ -129,11 +133,12 @@
               <label class="label text-xs">Alias (name)</label>
               <input class="input" v-model="ind.name" :placeholder="suggestAliasPlaceholder(ind)" />
               <p class="mt-1 text-xs text-slate-500">
-                조건에서 <code class="rounded bg-slate-800 px-1">indicator1</code> 로 참조할 이름
+                조건에서 <code class="rounded bg-slate-800 px-1">indicator1 / indicator2</code> 로
+                참조할 이름
               </p>
             </div>
 
-            <!-- Params (타입별 동적) -->
+            <!-- Params  -->
             <div class="space-y-1">
               <label class="label text-xs">Params</label>
 
@@ -186,7 +191,7 @@
               </div>
 
               <!-- STOCH -->
-              <div v-else-if="ind.type === 'STOCH'" class="grid grid-cols-2 gap-2">
+              <div v-else-if="ind.type === 'STOCH'" class="grid grid-cols-3 gap-2">
                 <div>
                   <div class="flex items-center justify-between text-[11px] text-slate-400">
                     <span>k</span>
@@ -199,18 +204,23 @@
                   </div>
                   <input type="number" min="1" class="input" v-model.number="ind.params.d" />
                 </div>
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>smooth_k</span>
+                  </div>
+                  <input type="number" min="1" class="input" v-model.number="ind.params.smooth_k" />
+                </div>
               </div>
 
-              <!-- Fallback (안 쓰겠지만 방어용) -->
+              <!-- Fallback -->
               <div v-else class="text-xs text-slate-500">
-                이 지표에 대한 파라미터가 정의되지 않았습니다.
+                이 지표에 대한 파라미터 UI는 정의되지 않았습니다. JSON에서 직접 수정할 수 있습니다.
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 인디케이터가 없을 때 -->
       <p
         v-else
         class="rounded-lg border border-dashed border-slate-700/70 bg-slate-900 px-4 py-3 text-sm text-slate-400"
@@ -267,11 +277,11 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref, watch } from 'vue'
+import { reactive, computed, ref, toRaw } from 'vue'
 import ConditionGroup from './ConditionGroup.vue'
 import { validateStrategy } from '../../utils/strategyValidator'
 
-type IndicatorType = 'SMA' | 'EMA' | 'RSI' | 'MACD' | 'BBANDS' | 'ATR' | 'STOCH'
+type IndicatorType = string
 
 type Indicator = {
   name: string
@@ -279,11 +289,31 @@ type Indicator = {
   params: Record<string, any>
 }
 
+type Operator =
+  | 'is_above'
+  | 'is_below'
+  | 'is_above_or_equal'
+  | 'is_below_or_equal'
+  | 'equals'
+  | 'not_equals'
+  | 'crosses_above'
+  | 'crosses_below'
+  | 'between'
+  | 'outside'
+  | 'percent_change_above'
+  | 'percent_change_below'
+  | 'consecutive_above'
+  | 'consecutive_below'
+
 type Condition = {
   indicator1: string
-  operator: 'is_above' | 'is_below' | 'crosses_above' | 'crosses_below'
+  operator: Operator
   indicator2: string
+  indicator3?: string
+  lookback_period?: number
+  // UI용 내부 필드
   _num?: string
+  _num3?: string
   _initialized?: boolean
 }
 
@@ -297,9 +327,6 @@ type StrategyDefinition = {
   trade_settings: { order_amount_percent: number }
 }
 
-/* ----------------------------------------
-   MAIN STRATEGY DATA
----------------------------------------- */
 const strategy = reactive<StrategyDefinition>({
   strategy_name: '',
   indicators: [],
@@ -311,23 +338,20 @@ const strategy = reactive<StrategyDefinition>({
 const description = ref('')
 const showJsonPreview = ref(false)
 
-/* ----------------------------------------
-   Indicator helpers
----------------------------------------- */
-
 function defaultParamsByType(type: IndicatorType): Record<string, any> {
   switch (type) {
     case 'SMA':
     case 'EMA':
     case 'RSI':
+      return { length: 14 }
     case 'ATR':
-      return { length: 20 }
+      return { length: 14 }
     case 'MACD':
       return { fast: 12, slow: 26, signal: 9 }
     case 'BBANDS':
       return { length: 20, std: 2 }
     case 'STOCH':
-      return { k: 14, d: 3 }
+      return { k: 14, d: 3, smooth_k: 3 }
     default:
       return {}
   }
@@ -374,41 +398,59 @@ function suggestAliasPlaceholder(ind: Indicator): string {
     case 'MACD':
       return 'macd'
     case 'BBANDS':
-      return 'bb20_2'
+      return 'bb'
     case 'STOCH':
-      return 'stoch14_3'
+      return 'stoch'
     default:
       return 'indicator_alias'
   }
 }
 
-/* ----------------------------------------
-   Indicator alias list (for condition builder)
----------------------------------------- */
 const indicatorOptions = computed(() => strategy.indicators.map((i) => i.name).filter((n) => !!n))
-
-/* ----------------------------------------
-   Validation
----------------------------------------- */
 const isValid = computed(() => validateStrategy(strategy))
 
-/* ----------------------------------------
-   JSON PREVIEW (정규화된 형태)
----------------------------------------- */
 function normalizeConditions(group: ConditionGroupValue): ConditionGroupValue {
   const key = 'all' in group ? 'all' : 'any'
   const list = (group as any)[key] as Condition[]
+
   const normalized = list.map((c) => {
     let indicator2 = c.indicator2
-    if (c.indicator2 === 'num' && c._num && c._num.trim() !== '') {
+    if (indicator2 === 'num' && c._num && c._num.trim() !== '') {
       indicator2 = String(c._num.trim())
     }
-    return {
+
+    let indicator3: string | undefined = c.indicator3
+    if (c.operator === 'between' || c.operator === 'outside') {
+      if (c.indicator3 === 'num' && c._num3 && c._num3.trim() !== '') {
+        indicator3 = String(c._num3.trim())
+      }
+    } else {
+      indicator3 = undefined
+    }
+
+    const base: any = {
       indicator1: c.indicator1,
       operator: c.operator,
       indicator2,
     }
+
+    if (indicator3 !== undefined && indicator3 !== '') {
+      base.indicator3 = indicator3
+    }
+
+    if (
+      (c.operator === 'percent_change_above' ||
+        c.operator === 'percent_change_below' ||
+        c.operator === 'consecutive_above' ||
+        c.operator === 'consecutive_below') &&
+      typeof c.lookback_period === 'number'
+    ) {
+      base.lookback_period = c.lookback_period
+    }
+
+    return base
   })
+
   return { [key]: normalized } as any
 }
 
@@ -423,9 +465,6 @@ const prettyJson = computed(() => {
   return JSON.stringify(payload, null, 2)
 })
 
-/* ----------------------------------------
-   Save
----------------------------------------- */
 const emit = defineEmits<{
   (e: 'save', value: StrategyDefinition): void
 }>()
@@ -433,13 +472,19 @@ const emit = defineEmits<{
 function onSave() {
   if (!isValid.value) return
 
-  const payload: StrategyDefinition = {
-    strategy_name: strategy.strategy_name,
-    indicators: strategy.indicators,
-    buy_conditions: normalizeConditions(strategy.buy_conditions),
-    sell_conditions: normalizeConditions(strategy.sell_conditions),
-    trade_settings: strategy.trade_settings,
-  }
+  const payload = JSON.parse(
+    JSON.stringify({
+      strategy_name: strategy.strategy_name,
+      description: description.value,
+      rules: {
+        strategy_name: strategy.strategy_name,
+        indicators: strategy.indicators,
+        buy_conditions: normalizeConditions(strategy.buy_conditions),
+        sell_conditions: normalizeConditions(strategy.sell_conditions),
+        trade_settings: strategy.trade_settings,
+      },
+    }),
+  )
 
   emit('save', payload)
 }
