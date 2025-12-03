@@ -1,74 +1,59 @@
 <template>
-  <div class="flex flex-col h-[600px] rounded-lg text-slate-200">
-    <!-- Loading -->
-    <div v-if="isLoading && messages.length === 0" class="flex flex-1 items-center justify-center">
-      <div
-        class="animate-spin w-10 h-10 border-4 border-slate-500 border-t-transparent rounded-full"
-      ></div>
-    </div>
-
-    <!-- Empty View -->
-    <EmptyChatView
-      v-else-if="messages.length === 0"
-      v-model="newMessage"
-      @sendMessage="sendMessage"
-      :isLoading="isLoading"
-      class="flex-1"
-    />
-
-    <!-- Active Chat -->
-    <ActiveChatView
-      v-else
-      class="flex-1"
+  <div class="flex flex-col h-full bg-slate-930 rounded-xl">
+    <!-- ① 메시지 목록 -->
+    <MessageList
+      class="flex-1 overflow-y-auto"
       :messages="messages"
-      v-model="newMessage"
-      @sendMessage="sendMessage"
       :isLoading="isLoading"
       @confirmStrategy="onConfirmStrategy"
       @rejectStrategy="onRejectStrategy"
+    />
+
+    <!-- Divider -->
+    <div class="h-[1px] bg-slate-700/50 my-2"></div>
+
+    <!-- ② 입력창 -->
+    <MessageInput
+      :value="newMessage"
+      :disabled="isLoading"
+      @update:value="newMessage = $event"
+      @send="sendMessage"
+      class="p-3"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import EmptyChatView from '@/components/Chat/EmptyChatView.vue'
-import ActiveChatView from '@/components/Chat/ActiveChatView.vue'
+import MessageList from './MessageList.vue'
+import MessageInput from './MessageInput.vue'
 import { useStrategyStore } from '@/stores/useStrategyStore'
-import type { StrategyChatMessage } from '@/types/Strategy'
+import { useRouter } from 'vue-router'
+
+const messages = ref([])
+const newMessage = ref('')
+const isLoading = ref(false)
 
 const strategyStore = useStrategyStore()
 const router = useRouter()
 
-const messages = ref<StrategyChatMessage[]>([])
-const newMessage = ref('')
-const isLoading = ref(false)
+async function sendMessage(text: string) {
+  if (!text.trim()) return
 
-async function sendMessage(content: string | null = null) {
-  const text = content || newMessage.value.trim()
-  if (!text) return
-
-  // 1. 사용자 메시지 push
-  messages.value.push({
-    type: 'user',
-    text: text,
-  })
-
+  messages.value.push({ type: 'user', text })
   newMessage.value = ''
-  isLoading.value = true
 
-  messages.value.push({
-    type: 'bot',
-    typing: true,
-  })
+  // typing bubble
+  isLoading.value = true
+  messages.value.push({ type: 'bot', typing: true })
 
   try {
-    // 백엔드 응답: { session_id, status, reply, strategy, conditions }
-    const response = await strategyStore.sendChatMessage(text)
-    const { status, reply, strategy, conditions } = response
+    const res = await strategyStore.sendChatMessage(text)
+    const { status, reply, strategy, conditions } = res
 
-    // 2. 봇 메시지를 status 기반으로 push
+    // remove typing
+    messages.value = messages.value.filter((m) => !m.typing)
+
     messages.value.push({
       type: 'bot',
       text: reply,
@@ -76,59 +61,27 @@ async function sendMessage(content: string | null = null) {
       strategy,
       conditions,
     })
-  } catch (e) {
-    console.log(e)
-
-    messages.value.push({
-      type: 'bot',
-      text: 'AI 응답을 가져오는 데 실패했습니다.',
-      status: 'chat',
-    })
   } finally {
-    messages.value = messages.value.filter((m) => !m.typing)
     isLoading.value = false
   }
 }
 
-async function onConfirmStrategy(strategy: any) {
+async function onConfirmStrategy(strategyJson) {
   const name = prompt('전략 이름을 입력하세요:')
+  if (!name) return
 
-  if (!name || name.trim() === '') {
-    alert('전략 이름을 입력해야 합니다.')
-    return
-  }
+  await strategyStore.create({
+    strategy_name: name,
+    rules: JSON.parse(strategyJson),
+  })
 
-  try {
-    isLoading.value = true
-    const rulesObj = JSON.parse(strategy)
+  messages.value.push({
+    type: 'bot',
+    text: '전략이 성공적으로 저장되었습니다!',
+    status: 'chat',
+  })
 
-    const payload = {
-      strategy_name: name,
-      description: '',
-      rules: rulesObj,
-    }
-
-    await strategyStore.create(payload)
-
-    messages.value.push({
-      type: 'bot',
-      text: `전략이 성공적으로 저장되었습니다!`,
-      status: 'chat',
-    })
-
-    // 페이지 이동
-    router.push({ name: 'strategies' })
-  } catch (e) {
-    console.log(e)
-
-    messages.value.push({
-      type: 'bot',
-      text: '전략 저장 중 오류가 발생했습니다.',
-      status: 'chat',
-    })
-  } finally {
-    isLoading.value = false
-  }
+  router.push('/strategies')
 }
 
 function onRejectStrategy() {

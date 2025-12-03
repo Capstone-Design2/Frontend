@@ -1,406 +1,491 @@
 <template>
-  <form @submit.prevent="onSave" aria-label="Strategy Builder" class="space-y-6">
-    <!-- 기본 정보 -->
-    <section class="card p-4">
-      <div class="grid gap-4 md:grid-cols-2">
+  <form @submit.prevent="onSave" class="space-y-8 max-w-5xl mx-auto">
+    <!-- 헤더 / 요약 -->
+    <section class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-slate-100">Strategy Builder</h1>
+        <p class="text-sm text-slate-400">
+          인디케이터를 추가하고, 조건을 조합해 나만의 자동매매 전략을 정의하세요.
+        </p>
+      </div>
+      <div class="flex gap-3">
+        <button
+          type="button"
+          class="btn-outline text-xs"
+          @click="showJsonPreview = !showJsonPreview"
+        >
+          {{ showJsonPreview ? 'Hide' : 'Show' }} JSON Preview
+        </button>
+        <button type="submit" class="btn-primary" :disabled="!isValid">Save Strategy</button>
+      </div>
+    </section>
+
+    <!-- SECTION: 기본 정보 + Trade Settings -->
+    <section class="card p-6 space-y-4">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex items-center gap-2">
+          <span class="i-ph-strategy-duotone text-xl"></span>
+          <h2 class="text-lg font-semibold">Strategy Info</h2>
+        </div>
+        <span
+          class="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300"
+        >
+          주문 비율
+          <input
+            type="number"
+            class="w-16 rounded bg-slate-900 px-2 py-1 text-right text-xs outline-none"
+            min="1"
+            max="100"
+            v-model.number="strategy.trade_settings.order_amount_percent"
+          />
+          %
+        </span>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-[2fr,3fr]">
         <div>
-          <label for="name" class="label">Name</label>
-          <input id="name" v-model="form.name" class="input" required aria-required="true" />
-          <p v-if="errors['name']" class="mt-1 text-xs text-danger">
-            {{ errors['name'] }}
-          </p>
+          <label class="label">Strategy Name</label>
+          <input
+            v-model="strategy.strategy_name"
+            class="input"
+            placeholder="예: SMA 골든크로스 전략"
+            required
+          />
         </div>
         <div>
-          <label for="desc" class="label">Description</label>
-          <input id="desc" v-model="form.description" class="input" />
+          <label class="label">Description (optional)</label>
+          <input
+            v-model="description"
+            class="input"
+            placeholder="전략에 대한 간단한 설명을 적어주세요."
+          />
         </div>
       </div>
     </section>
 
-    <!-- Indicators -->
-    <section class="card p-4">
-      <h3 class="font-medium">Indicators</h3>
-      <p class="mb-3 text-sm text-slate-400">
-        Select a single indicator to include in the strategy.
+    <!-- SECTION: Indicators -->
+    <section class="card p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="i-ph-chart-line-duotone text-xl"></span>
+          <h2 class="text-lg font-semibold">Indicators</h2>
+        </div>
+        <div class="flex flex-wrap gap-2 text-xs text-slate-400">
+          <span class="rounded-full bg-slate-800 px-2 py-1"
+            >SMA / EMA / RSI / MACD / BBANDS / ATR / STOCH</span
+          >
+          <span class="rounded-full bg-slate-800 px-2 py-1"
+            >PRICE (close/open/high/low/volume)는 조건에서 직접 사용</span
+          >
+        </div>
+      </div>
+
+      <!-- 인디케이터 카드들 -->
+      <div v-if="strategy.indicators.length" class="space-y-3">
+        <div
+          v-for="(ind, idx) in strategy.indicators"
+          :key="idx"
+          class="relative overflow-hidden rounded-xl border border-slate-700/70 bg-gradient-to-br from-slate-900 to-slate-950 p-4 shadow-lg"
+        >
+          <!-- 왼쪽 컬러 바 -->
+          <div
+            class="pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-indigo-400 to-sky-400"
+          ></div>
+
+          <div class="flex items-center justify-between gap-2 pl-3">
+            <div class="flex items-center gap-2">
+              <span
+                class="rounded bg-slate-800/80 px-2 py-0.5 text-[11px] uppercase text-slate-300"
+              >
+                #{{ idx + 1 }}
+              </span>
+              <span class="text-sm font-medium text-slate-100">
+                {{ ind.name || 'Unnamed indicator' }}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              class="text-xs text-slate-400 transition hover:text-danger"
+              @click="removeIndicator(idx)"
+            >
+              Remove
+            </button>
+          </div>
+
+          <div class="mt-4 grid gap-3 md:grid-cols-[1.1fr,1.4fr,1.5fr] pl-3">
+            <!-- Type -->
+            <div class="space-y-1">
+              <label class="label text-xs">Type</label>
+              <select v-model="ind.type" class="input" @change="onChangeIndicatorType(ind)">
+                <option value="SMA">SMA</option>
+                <option value="EMA">EMA</option>
+                <option value="RSI">RSI</option>
+                <option value="MACD">MACD</option>
+                <option value="BBANDS">BBANDS</option>
+                <option value="ATR">ATR</option>
+                <option value="STOCH">STOCH</option>
+              </select>
+            </div>
+
+            <!-- Alias -->
+            <div class="space-y-1">
+              <label class="label text-xs">Alias (name)</label>
+              <input class="input" v-model="ind.name" :placeholder="suggestAliasPlaceholder(ind)" />
+              <p class="mt-1 text-xs text-slate-500">
+                조건에서 <code class="rounded bg-slate-800 px-1">indicator1 / indicator2</code> 로
+                참조할 이름
+              </p>
+            </div>
+
+            <!-- Params  -->
+            <div class="space-y-1">
+              <label class="label text-xs">Params</label>
+
+              <!-- length 기반 -->
+              <div v-if="['SMA', 'EMA', 'RSI', 'ATR'].includes(ind.type)" class="flex gap-2">
+                <div class="flex-1">
+                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>length</span>
+                  </div>
+                  <input type="number" min="1" class="input" v-model.number="ind.params.length" />
+                </div>
+              </div>
+
+              <!-- MACD -->
+              <div v-else-if="ind.type === 'MACD'" class="grid grid-cols-3 gap-2">
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>fast</span>
+                  </div>
+                  <input type="number" min="1" class="input" v-model.number="ind.params.fast" />
+                </div>
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>slow</span>
+                  </div>
+                  <input type="number" min="1" class="input" v-model.number="ind.params.slow" />
+                </div>
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>signal</span>
+                  </div>
+                  <input type="number" min="1" class="input" v-model.number="ind.params.signal" />
+                </div>
+              </div>
+
+              <!-- BBANDS -->
+              <div v-else-if="ind.type === 'BBANDS'" class="grid grid-cols-2 gap-2">
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>length</span>
+                  </div>
+                  <input type="number" min="1" class="input" v-model.number="ind.params.length" />
+                </div>
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>std</span>
+                  </div>
+                  <input type="number" step="0.1" class="input" v-model.number="ind.params.std" />
+                </div>
+              </div>
+
+              <!-- STOCH -->
+              <div v-else-if="ind.type === 'STOCH'" class="grid grid-cols-3 gap-2">
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>k</span>
+                  </div>
+                  <input type="number" min="1" class="input" v-model.number="ind.params.k" />
+                </div>
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>d</span>
+                  </div>
+                  <input type="number" min="1" class="input" v-model.number="ind.params.d" />
+                </div>
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>smooth_k</span>
+                  </div>
+                  <input type="number" min="1" class="input" v-model.number="ind.params.smooth_k" />
+                </div>
+              </div>
+
+              <!-- Fallback -->
+              <div v-else class="text-xs text-slate-500">
+                이 지표에 대한 파라미터 UI는 정의되지 않았습니다. JSON에서 직접 수정할 수 있습니다.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p
+        v-else
+        class="rounded-lg border border-dashed border-slate-700/70 bg-slate-900 px-4 py-3 text-sm text-slate-400"
+      >
+        아직 추가된 인디케이터가 없습니다. 아래 버튼으로 전략에 사용할 지표를 추가하세요.
       </p>
-      <div class="grid gap-4 md:grid-cols-2">
-        <!-- SMA -->
-        <div>
-          <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="smaEnabled" /> SMA
-          </label>
-          <div v-if="smaEnabled" class="mt-2 grid grid-cols-2 gap-2">
-            <label class="label">SMA Period</label>
-            <input type="number" class="input" v-model.number="smaPeriod" min="2" />
-          </div>
-          <p v-if="errors['indicators.sma']" class="mt-1 text-xs text-danger">
-            {{ errors['indicators.sma'] }}
-          </p>
-        </div>
 
-        <!-- EMA -->
-        <div>
-          <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="emaEnabled" /> EMA
-          </label>
-          <div v-if="emaEnabled" class="mt-2 grid grid-cols-2 gap-2">
-            <label class="label">EMA Period</label>
-            <input type="number" class="input" v-model.number="emaPeriod" min="2" />
-          </div>
-          <p v-if="errors['indicators.ema']" class="mt-1 text-xs text-danger">
-            {{ errors['indicators.ema'] }}
-          </p>
-        </div>
-
-        <!-- RSI -->
-        <div>
-          <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="rsiEnabled" /> RSI
-          </label>
-          <div v-if="rsiEnabled" class="mt-2 grid grid-cols-2 gap-2">
-            <label class="label">RSI</label>
-            <input type="number" class="input" v-model.number="rsiPeriod" min="2" />
-          </div>
-          <p v-if="errors['indicators.rsi']" class="mt-1 text-xs text-danger">
-            {{ errors['indicators.rsi'] }}
-          </p>
-        </div>
-
-        <!-- MACD -->
-        <div>
-          <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="macdEnabled" /> MACD
-          </label>
-          <div v-if="macdEnabled" class="mt-2 grid grid-cols-6 items-center gap-2">
-            <label class="label col-span-2">Fast</label>
-            <input type="number" class="input col-span-4" v-model.number="macdFast" />
-
-            <label class="label col-span-2">Slow</label>
-            <input type="number" class="input col-span-4" v-model.number="macdSlow" />
-
-            <label class="label col-span-2">Signal</label>
-            <input type="number" class="input col-span-4" v-model.number="macdSignal" />
-          </div>
-          <p v-if="errors['indicators.macd']" class="mt-1 text-xs text-danger">
-            {{ errors['indicators.macd'] }}
-          </p>
-        </div>
-
-        <!-- BBands -->
-        <div>
-          <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="bbandsEnabled" /> Bollinger Bands
-          </label>
-          <div v-if="bbandsEnabled" class="mt-2 grid grid-cols-2 gap-2">
-            <label class="label">Period</label>
-            <input type="number" class="input" v-model.number="bbandsPeriod" />
-
-            <label class="label">Deviation</label>
-            <input type="number" class="input" step="0.1" v-model.number="bbandsDev" />
-          </div>
-          <p v-if="errors['indicators.bbands']" class="mt-1 text-xs text-danger">
-            {{ errors['indicators.bbands'] }}
-          </p>
-        </div>
+      <!-- Add buttons -->
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn-outline" @click="addIndicator()">+ Indicator</button>
+        <button type="button" class="btn-outline text-xs" @click="addPresetIndicator('SMA')">
+          + SMA(20)
+        </button>
+        <button type="button" class="btn-outline text-xs" @click="addPresetIndicator('RSI')">
+          + RSI(14)
+        </button>
+        <button type="button" class="btn-outline text-xs" @click="addPresetIndicator('MACD')">
+          + MACD(12,26,9)
+        </button>
       </div>
     </section>
 
-    <!-- Recommended Strategies -->
-    <section v-if="filteredStrategies.length > 0" class="card p-4">
-      <h3 class="mb-3 font-medium">Recommended Strategies</h3>
-
-      <div class="grid gap-4 md:grid-cols-2">
-        <div>
-          <p class="mb-2 text-sm text-slate-300">Buy Conditions</p>
-          <label class="flex gap-2"
-            ><input type="checkbox" v-model="buy.smaCross" /> SMA crosses above price</label
-          >
-          <label class="flex gap-2"
-            ><input type="checkbox" v-model="buy.rsiOversold" /> RSI below 30</label
-          >
-          <label class="flex gap-2"
-            ><input type="checkbox" v-model="buy.macdBull" /> MACD bullish crossover</label
-          >
-        </div>
-
-        <div>
-          <p class="mb-2 text-sm text-slate-300">Sell Conditions</p>
-          <label class="flex gap-2"
-            ><input type="checkbox" v-model="sell.smaCross" /> SMA crosses below price</label
-          >
-          <label class="flex gap-2"
-            ><input type="checkbox" v-model="sell.rsiOverbought" /> RSI above 70</label
-          >
-          <label class="flex gap-2"
-            ><input type="checkbox" v-model="sell.macdBear" /> MACD bearish crossover</label
-          >
-        </div>
-      </div>
-
-      <!-- stopLoss / takeProfit / positionSizing -->
-      <div class="mt-4 grid gap-4 md:grid-cols-3">
-        <div>
-          <label class="label">Stop-loss %</label>
-          <input type="number" class="input" v-model.number="form.rules.stopLoss" />
-        </div>
-
-        <div>
-          <label class="label">Take-profit %</label>
-          <input type="number" class="input" v-model.number="form.rules.takeProfit" />
-        </div>
-
-        <div>
-          <label class="label">Position sizing</label>
-          <div class="flex gap-2">
-            <select class="input" v-model="form.positionSizing.mode">
-              <option value="fixed">Fixed</option>
-              <option value="percent">% Equity</option>
-            </select>
-            <input type="number" class="input" v-model.number="form.positionSizing.value" />
-          </div>
-        </div>
-      </div>
+    <!-- SECTION: Buy Conditions -->
+    <section class="card p-6 space-y-4">
+      <ConditionGroup
+        title="Buy Conditions"
+        v-model="strategy.buy_conditions"
+        :indicatorOptions="indicatorOptions"
+      />
     </section>
 
-    <!-- 버튼 -->
-    <section class="flex items-center justify-between">
-      <div class="flex gap-2">
-        <button type="button" class="btn-outline" @click="applyPreset('conservative')">
-          Conservative
-        </button>
-        <button type="button" class="btn-outline" @click="applyPreset('neutral')">Neutral</button>
-        <button type="button" class="btn-outline" @click="applyPreset('aggressive')">
-          Aggressive
-        </button>
+    <!-- SECTION: Sell Conditions -->
+    <section class="card p-6 space-y-4">
+      <ConditionGroup
+        title="Sell Conditions"
+        v-model="strategy.sell_conditions"
+        :indicatorOptions="indicatorOptions"
+      />
+    </section>
+
+    <!-- JSON PREVIEW -->
+    <section v-if="showJsonPreview" class="card p-4">
+      <div class="mb-2 flex items-center justify-between">
+        <h3 class="text-sm font-medium text-slate-200">Strategy JSON Preview</h3>
+        <span class="text-[11px] text-slate-500">
+          백테스트 API의 <code>strategy_definition</code> 그대로 출력
+        </span>
       </div>
-      <button type="submit" class="btn-primary" :disabled="!isValid">Save Strategy</button>
+      <pre class="max-h-80 overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-200"
+        >{{ prettyJson }}
+      </pre>
     </section>
   </form>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, watch, ref } from 'vue'
-import { strategySchema, STRATEGY_SCHEMA_VERSION, type StrategyInput } from '@/utils/validation'
+import { reactive, computed, ref, toRaw } from 'vue'
+import ConditionGroup from './ConditionGroup.vue'
+import { validateStrategy } from '../../utils/strategyValidator'
 
-const emit = defineEmits<{ (e: 'save', value: StrategyInput): void }>()
+type IndicatorType = string
 
-const props = defineProps<{
-  modelValue?: StrategyInput | null
-  presets: Partial<StrategyInput>[]
-}>()
-
-/* ------------------ form (camelCase) ------------------ */
-const form = reactive<StrategyInput>({
-  schemaVersion: STRATEGY_SCHEMA_VERSION,
-  name: '',
-  description: '',
-  indicators: {},
-  rules: { buy: [], sell: [], stopLoss: 0, takeProfit: 0 },
-  positionSizing: { mode: 'fixed', value: 0 },
-  ...(props.modelValue || {}),
-})
-
-/* ------------------ indicator helpers ------------------ */
-type IndicatorType = 'sma' | 'ema' | 'rsi' | 'macd' | 'bbands'
-
-function defaultIndicator(t: IndicatorType) {
-  return (
-    {
-      sma: { enabled: true, period: 20 },
-      ema: { enabled: true, period: 20 },
-      rsi: { enabled: true, period: 14 },
-      macd: { enabled: true, fast: 12, slow: 26, signal: 9 },
-      bbands: { enabled: true, period: 20, dev: 2 },
-    }[t] || { enabled: true }
-  )
+type Indicator = {
+  name: string
+  type: IndicatorType
+  params: Record<string, any>
 }
 
-function setSingleIndicator(t: IndicatorType | null) {
-  if (!t) {
-    form.indicators = {}
-    return
+type Operator =
+  | 'is_above'
+  | 'is_below'
+  | 'is_above_or_equal'
+  | 'is_below_or_equal'
+  | 'equals'
+  | 'not_equals'
+  | 'crosses_above'
+  | 'crosses_below'
+  | 'between'
+  | 'outside'
+  | 'percent_change_above'
+  | 'percent_change_below'
+  | 'consecutive_above'
+  | 'consecutive_below'
+
+type Condition = {
+  indicator1: string
+  operator: Operator
+  indicator2: string
+  indicator3?: string
+  lookback_period?: number
+  // UI용 내부 필드
+  _num?: string
+  _num3?: string
+  _initialized?: boolean
+}
+
+type ConditionGroupValue = { all: Condition[]; any?: never } | { any: Condition[]; all?: never }
+
+type StrategyDefinition = {
+  strategy_name: string
+  indicators: Indicator[]
+  buy_conditions: ConditionGroupValue
+  sell_conditions: ConditionGroupValue
+  trade_settings: { order_amount_percent: number }
+}
+
+const strategy = reactive<StrategyDefinition>({
+  strategy_name: '',
+  indicators: [],
+  buy_conditions: { all: [] },
+  sell_conditions: { all: [] },
+  trade_settings: { order_amount_percent: 100 },
+})
+
+const description = ref('')
+const showJsonPreview = ref(false)
+
+function defaultParamsByType(type: IndicatorType): Record<string, any> {
+  switch (type) {
+    case 'SMA':
+    case 'EMA':
+    case 'RSI':
+      return { length: 14 }
+    case 'ATR':
+      return { length: 14 }
+    case 'MACD':
+      return { fast: 12, slow: 26, signal: 9 }
+    case 'BBANDS':
+      return { length: 20, std: 2 }
+    case 'STOCH':
+      return { k: 14, d: 3, smooth_k: 3 }
+    default:
+      return {}
   }
-  form.indicators = { [t]: defaultIndicator(t) } as any
 }
 
-/* ------------------ indicator toggles ------------------ */
-const smaEnabled = computed({
-  get: () => !!form.indicators.sma,
-  set: (v) => (v ? setSingleIndicator('sma') : setSingleIndicator(null)),
-})
-const emaEnabled = computed({
-  get: () => !!form.indicators.ema,
-  set: (v) => (v ? setSingleIndicator('ema') : setSingleIndicator(null)),
-})
-const rsiEnabled = computed({
-  get: () => !!form.indicators.rsi,
-  set: (v) => (v ? setSingleIndicator('rsi') : setSingleIndicator(null)),
-})
-const macdEnabled = computed({
-  get: () => !!form.indicators.macd,
-  set: (v) => (v ? setSingleIndicator('macd') : setSingleIndicator(null)),
-})
-const bbandsEnabled = computed({
-  get: () => !!form.indicators.bbands,
-  set: (v) => (v ? setSingleIndicator('bbands') : setSingleIndicator(null)),
-})
+function addIndicator(type: IndicatorType = 'SMA') {
+  strategy.indicators.push({
+    name: '',
+    type,
+    params: defaultParamsByType(type),
+  })
+}
 
-/* ------------------ indicator params ------------------ */
-const smaPeriod = computed({
-  get: () => form.indicators.sma?.period ?? 20,
-  set: (v) => {
-    if (!form.indicators.sma) setSingleIndicator('sma')
-    form.indicators.sma!.period = v
-  },
-})
-const emaPeriod = computed({
-  get: () => form.indicators.ema?.period ?? 20,
-  set: (v) => {
-    if (!form.indicators.ema) setSingleIndicator('ema')
-    form.indicators.ema!.period = v
-  },
-})
-const rsiPeriod = computed({
-  get: () => form.indicators.rsi?.period ?? 14,
-  set: (v) => {
-    if (!form.indicators.rsi) setSingleIndicator('rsi')
-    form.indicators.rsi!.period = v
-  },
-})
-const macdFast = computed({
-  get: () => form.indicators.macd?.fast ?? 12,
-  set: (v) => {
-    if (!form.indicators.macd) setSingleIndicator('macd')
-    form.indicators.macd!.fast = v
-  },
-})
-const macdSlow = computed({
-  get: () => form.indicators.macd?.slow ?? 26,
-  set: (v) => {
-    if (!form.indicators.macd) setSingleIndicator('macd')
-    form.indicators.macd!.slow = v
-  },
-})
-const macdSignal = computed({
-  get: () => form.indicators.macd?.signal ?? 9,
-  set: (v) => {
-    if (!form.indicators.macd) setSingleIndicator('macd')
-    form.indicators.macd!.signal = v
-  },
-})
-const bbandsPeriod = computed({
-  get: () => form.indicators.bbands?.period ?? 20,
-  set: (v) => {
-    if (!form.indicators.bbands) setSingleIndicator('bbands')
-    form.indicators.bbands!.period = v
-  },
-})
-const bbandsDev = computed({
-  get: () => form.indicators.bbands?.dev ?? 2,
-  set: (v) => {
-    if (!form.indicators.bbands) setSingleIndicator('bbands')
-    form.indicators.bbands!.dev = v
-  },
-})
+function addPresetIndicator(type: IndicatorType) {
+  addIndicator(type)
+  const idx = strategy.indicators.length - 1
+  const ind = strategy.indicators[idx]
+  if (type === 'SMA') ind.name = 'sma20'
+  else if (type === 'RSI') ind.name = 'rsi14'
+  else if (type === 'MACD') ind.name = 'macd'
+}
 
-/* ------------------ buy/sell rules ------------------ */
-const buy = reactive({ smaCross: false, rsiOversold: false, macdBull: false })
-const sell = reactive({ smaCross: false, rsiOverbought: false, macdBear: false })
+function removeIndicator(idx: number) {
+  strategy.indicators.splice(idx, 1)
+}
 
-watch(
-  () => ({ ...buy, ...sell }),
-  () => {
-    form.rules.buy = []
-    if (buy.smaCross) form.rules.buy.push('smaCrossPriceUp')
-    if (buy.rsiOversold) form.rules.buy.push('rsi<30')
-    if (buy.macdBull) form.rules.buy.push('macdBull')
+function onChangeIndicatorType(ind: Indicator) {
+  ind.params = defaultParamsByType(ind.type)
+  if (!ind.name) {
+    ind.name = suggestAliasPlaceholder(ind)
+  }
+}
 
-    form.rules.sell = []
-    if (sell.smaCross) form.rules.sell.push('smaCrossPriceDown')
-    if (sell.rsiOverbought) form.rules.sell.push('rsi>70')
-    if (sell.macdBear) form.rules.sell.push('macdBear')
-  },
-)
+function suggestAliasPlaceholder(ind: Indicator): string {
+  switch (ind.type) {
+    case 'SMA':
+      return 'sma20'
+    case 'EMA':
+      return 'ema20'
+    case 'RSI':
+      return 'rsi14'
+    case 'ATR':
+      return 'atr14'
+    case 'MACD':
+      return 'macd'
+    case 'BBANDS':
+      return 'bb'
+    case 'STOCH':
+      return 'stoch'
+    default:
+      return 'indicator_alias'
+  }
+}
 
-/* ------------------ validation ------------------ */
-const errors = reactive<Record<string, string>>({})
-const isValid = ref(false)
+const indicatorOptions = computed(() => strategy.indicators.map((i) => i.name).filter((n) => !!n))
+const isValid = computed(() => validateStrategy(strategy))
 
-watch(
-  () => form,
-  (value) => {
-    try {
-      strategySchema.parse(value)
-      Object.keys(errors).forEach((k) => delete errors[k])
-      isValid.value = true
-    } catch (err: any) {
-      Object.keys(errors).forEach((k) => delete errors[k])
-      for (const issue of err.issues || []) {
-        const key = issue.path.join('.')
-        errors[key] = issue.message
+function normalizeConditions(group: ConditionGroupValue): ConditionGroupValue {
+  const key = 'all' in group ? 'all' : 'any'
+  const list = (group as any)[key] as Condition[]
+
+  const normalized = list.map((c) => {
+    let indicator2 = c.indicator2
+    if (indicator2 === 'num' && c._num && c._num.trim() !== '') {
+      indicator2 = String(c._num.trim())
+    }
+
+    let indicator3: string | undefined = c.indicator3
+    if (c.operator === 'between' || c.operator === 'outside') {
+      if (c.indicator3 === 'num' && c._num3 && c._num3.trim() !== '') {
+        indicator3 = String(c._num3.trim())
       }
-      isValid.value = false
+    } else {
+      indicator3 = undefined
     }
-  },
-  { deep: true, immediate: true },
-)
 
-/* ------------------ presets ------------------ */
-const filteredStrategies = ref<Partial<StrategyInput>[]>([])
-
-watch(
-  () => (Object.entries(form.indicators)[0]?.[0] as IndicatorType | undefined) ?? null,
-  (active) => {
-    if (!active) {
-      filteredStrategies.value = []
-      return
+    const base: any = {
+      indicator1: c.indicator1,
+      operator: c.operator,
+      indicator2,
     }
-    filteredStrategies.value = props.presets.filter((preset) => {
-      const arr = (preset as any).indicators
-      if (!Array.isArray(arr)) return false
-      const mapped = arr.map((i: any) => (i.type === 'bollinger_bands' ? 'bbands' : i.type))
-      return mapped.includes(active)
-    })
-  },
-  { immediate: true },
-)
 
-/* ------------------ presets 버튼 ------------------ */
-function applyPreset(kind: 'conservative' | 'neutral' | 'aggressive') {
-  if (kind === 'conservative') {
-    setSingleIndicator('sma')
-    smaPeriod.value = 50
-    buy.smaCross = true
-    sell.smaCross = true
-    form.positionSizing = { mode: 'percent', value: 5 }
-    form.rules.stopLoss = 5
-    form.rules.takeProfit = 10
-  } else if (kind === 'neutral') {
-    setSingleIndicator('ema')
-    emaPeriod.value = 21
-    macdEnabled.value = true
-    buy.macdBull = true
-    sell.macdBear = true
-    form.positionSizing = { mode: 'percent', value: 10 }
-    form.rules.stopLoss = 7
-    form.rules.takeProfit = 14
-  } else {
-    setSingleIndicator('bbands')
-    bbandsPeriod.value = 20
-    bbandsDev.value = 2
-    rsiEnabled.value = true
-    rsiPeriod.value = 7
-    buy.rsiOversold = true
-    sell.rsiOverbought = true
-    form.positionSizing = { mode: 'percent', value: 20 }
-    form.rules.stopLoss = 8
-    form.rules.takeProfit = 12
-  }
+    if (indicator3 !== undefined && indicator3 !== '') {
+      base.indicator3 = indicator3
+    }
+
+    if (
+      (c.operator === 'percent_change_above' ||
+        c.operator === 'percent_change_below' ||
+        c.operator === 'consecutive_above' ||
+        c.operator === 'consecutive_below') &&
+      typeof c.lookback_period === 'number'
+    ) {
+      base.lookback_period = c.lookback_period
+    }
+
+    return base
+  })
+
+  return { [key]: normalized } as any
 }
+
+const prettyJson = computed(() => {
+  const payload: StrategyDefinition = {
+    strategy_name: strategy.strategy_name,
+    indicators: strategy.indicators,
+    buy_conditions: normalizeConditions(strategy.buy_conditions),
+    sell_conditions: normalizeConditions(strategy.sell_conditions),
+    trade_settings: strategy.trade_settings,
+  }
+  return JSON.stringify(payload, null, 2)
+})
+
+const emit = defineEmits<{
+  (e: 'save', value: StrategyDefinition): void
+}>()
 
 function onSave() {
   if (!isValid.value) return
-  const parsed = strategySchema.parse(form)
-  emit('save', parsed)
+
+  const payload = JSON.parse(
+    JSON.stringify({
+      strategy_name: strategy.strategy_name,
+      description: description.value,
+      rules: {
+        strategy_name: strategy.strategy_name,
+        indicators: strategy.indicators,
+        buy_conditions: normalizeConditions(strategy.buy_conditions),
+        sell_conditions: normalizeConditions(strategy.sell_conditions),
+        trade_settings: strategy.trade_settings,
+      },
+    }),
+  )
+
+  emit('save', payload)
 }
 </script>

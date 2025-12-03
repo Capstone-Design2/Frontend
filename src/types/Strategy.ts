@@ -1,18 +1,56 @@
 export interface Strategy {
-  schemaVersion?: 1
-  strategy_id?: number | string
+  strategy_id?: number
+  user_id?: number
   strategy_name: string
-  description?: string
-  indicators: {
-    sma?: { enabled: boolean; period: number }
-    ema?: { enabled: boolean; period: number }
-    rsi?: { enabled: boolean; period: number }
-    macd?: { enabled: boolean; fast: number; slow: number; signal: number }
-    bbands?: { enabled: boolean; period: number; dev: number }
-  }
-  rules: { buy: string[]; sell: string[]; stop_loss?: number; take_profit?: number }
-  position_sizing: { mode: 'fixed' | 'percent'; value: number }
+  description?: string | null
+  rules: StrategyRules
 }
+
+export interface StrategyRules {
+  strategy_name: string
+  indicators: Indicator[]
+  buy_conditions: ConditionGroupValue
+  sell_conditions: ConditionGroupValue
+  trade_settings: {
+    order_amount_percent: number
+  }
+}
+
+export type IndicatorType = string
+
+export interface Indicator {
+  name: string
+  type: IndicatorType
+  params: Record<string, any>
+}
+
+export type Operator =
+  | 'is_above'
+  | 'is_below'
+  | 'is_above_or_equal'
+  | 'is_below_or_equal'
+  | 'equals'
+  | 'not_equals'
+  | 'crosses_above'
+  | 'crosses_below'
+  | 'between'
+  | 'outside'
+  | 'percent_change_above'
+  | 'percent_change_below'
+  | 'consecutive_above'
+  | 'consecutive_below'
+
+export interface Condition {
+  indicator1: string
+  operator: Operator
+  indicator2: string
+  indicator3?: string
+  lookback_period?: number
+}
+
+export type ConditionGroupValue =
+  | { all: Condition[]; any?: never }
+  | { any: Condition[]; all?: never }
 
 export interface StrategyChatRequest {
   content: string

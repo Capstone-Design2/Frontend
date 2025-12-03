@@ -1,145 +1,144 @@
 <template>
-  <div class="mx-auto max-w-5xl px-4 pt-6">
-    <div class="mb-4">
-      <RouterLink
-        :to="{ name: 'strategies' }"
-        class="inline-flex items-center text-sm text-slate-400 hover:underline"
-      >
-        &larr; Back to Strategies
+  <div class="mx-auto max-w-5xl px-4 py-10 space-y-10">
+    <!-- Back -->
+    <RouterLink
+      :to="{ name: 'strategies' }"
+      class="text-sm text-slate-400 hover:text-slate-200 hover:underline inline-flex items-center"
+    >
+      ← Back to Strategies
+    </RouterLink>
+
+    <!-- Loading -->
+    <div v-if="isLoading" class="text-center text-slate-400 py-10">Loading strategy...</div>
+
+    <!-- Not Found -->
+    <div v-else-if="!strategy" class="text-center space-y-3 py-10">
+      <h1 class="text-xl font-semibold">Strategy not found</h1>
+      <RouterLink to="/strategies" class="text-blue-500 hover:underline">
+        Go back to strategies
       </RouterLink>
     </div>
 
-    <!-- Loading Indicator -->
-    <div v-if="isLoading" class="text-center text-slate-400">Loading strategy...</div>
-
-    <!-- Strategy Details -->
-    <div v-else-if="strategy" class="space-y-6">
-      <div class="flex items-center justify-between">
+    <!-- Strategy -->
+    <div v-else class="space-y-12">
+      <!-- HEADER -->
+      <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div>
-          <h1 class="text-2xl font-bold">{{ strategy.strategy_name }}</h1>
-          <p class="text-slate-400">{{ strategy.description }}</p>
+          <h1 class="text-3xl font-bold text-white">{{ strategy.strategy_name }}</h1>
+          <p class="text-slate-400 mt-1">
+            {{ strategy.description || 'No description provided.' }}
+          </p>
         </div>
-        <div class="flex items-center space-x-2">
-                    <RouterLink
+
+        <div class="flex gap-3">
+          <RouterLink
             :to="{ name: 'strategies-edit', params: { id: strategy.strategy_id } }"
-            class="btn-secondary"
-            >Edit</RouterLink>
-          <button @click="onDelete" class="btn-danger">Delete</button>
-        </div>
-      </div>
+            class="px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 transition text-sm"
+          >
+            Edit
+          </RouterLink>
 
-      <!-- Indicators -->
-      <div class="card">
-        <div class="p-4">
-          <h3 class="font-semibold">Indicators Used</h3>
-          <div v-if="usedIndicators.size > 0" class="mt-2 flex flex-wrap gap-2">
-            <span v-for="indicator in usedIndicators" :key="indicator" class="rounded-full bg-slate-700 px-3 py-1 text-sm">
-              {{ indicator }}
-            </span>
-          </div>
-          <p v-else class="mt-2 text-sm text-slate-400">No indicators found in rules.</p>
+          <button
+            @click="onDelete"
+            class="px-4 py-2 rounded bg-red-600 hover:bg-red-500 transition text-sm text-white"
+          >
+            Delete
+          </button>
         </div>
-      </div>
+      </header>
 
-      <!-- Buy & Sell Conditions -->
-      <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div class="card">
-          <div class="p-4">
-            <h3 class="font-semibold">Buy Condition</h3>
-            <div v-if="strategy.rules?.buy_condition" class="mt-2 space-y-4">
-              <div>
-                <h4 class="font-medium text-slate-300">진입 (Entry)</h4>
-                <pre class="mt-1 overflow-x-auto rounded bg-slate-800 p-3 text-xs">{{ JSON.stringify(strategy.rules.buy_condition.entry, null, 2) }}</pre>
-              </div>
-              <div>
-                <h4 class="font-medium text-slate-300">청산 (Exit)</h4>
-                <pre class="mt-1 overflow-x-auto rounded bg-slate-800 p-3 text-xs">{{ JSON.stringify(strategy.rules.buy_condition.exit, null, 2) }}</pre>
-              </div>
-            </div>
-            <p v-else class="mt-2 text-sm text-slate-400">No buy condition data.</p>
+      <!-- INDICATORS SECTION -->
+      <section class="card p-6 space-y-4">
+        <h2 class="text-lg font-semibold text-white">사용된 Indicators</h2>
+
+        <div v-if="strategy.rules.indicators.length" class="flex flex-wrap gap-2 mt-2">
+          <div
+            v-for="ind in strategy.rules.indicators"
+            :key="ind.name"
+            class="px-3 py-1 bg-slate-800 rounded-lg text-sm flex items-center gap-2"
+          >
+            <span class="text-indigo-400 font-semibold">{{ ind.type }}</span>
           </div>
         </div>
-        <div class="card">
-          <div class="p-4">
-            <h3 class="font-semibold">Sell Condition</h3>
-            <div v-if="strategy.rules?.sell_condition" class="mt-2 space-y-4">
-              <div>
-                <h4 class="font-medium text-slate-300">진입 (Entry)</h4>
-                <pre class="mt-1 overflow-x-auto rounded bg-slate-800 p-3 text-xs">{{ JSON.stringify(strategy.rules.sell_condition.entry, null, 2) }}</pre>
-              </div>
-              <div>
-                <h4 class="font-medium text-slate-300">청산 (Exit)</h4>
-                <pre class="mt-1 overflow-x-auto rounded bg-slate-800 p-3 text-xs">{{ JSON.stringify(strategy.rules.sell_condition.exit, null, 2) }}</pre>
-              </div>
-            </div>
-            <p v-else class="mt-2 text-sm text-slate-400">No sell condition data.</p>
-          </div>
+
+        <p v-else class="text-slate-400 text-sm">No indicators defined.</p>
+      </section>
+
+      <!-- BUY & SELL CONDITIONS -->
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- BUY -->
+        <div class="card p-6 space-y-4">
+          <h2 class="text-lg font-semibold text-green-300">Buy Conditions</h2>
+
+          <ConditionList
+            :group="strategy.rules.buy_conditions"
+            :indicators="strategy.rules.indicators"
+            type="buy"
+          />
         </div>
-      </div>
 
-    </div>
+        <!-- SELL -->
+        <div class="card p-6 space-y-4">
+          <h2 class="text-lg font-semibold text-red-300">Sell Conditions</h2>
 
-    <!-- Not Found Message -->
-    <div v-else class="text-center">
-      <h1 class="text-xl">Strategy not found.</h1>
-      <RouterLink to="/strategies" class="text-blue-500 hover:underline"
-        >Go back to strategies</RouterLink
-      >
+          <ConditionList
+            :group="strategy.rules.sell_conditions"
+            :indicators="strategy.rules.indicators"
+            type="sell"
+          />
+        </div>
+      </section>
+
+      <!-- TRADE SETTINGS -->
+      <section class="card p-6 space-y-3">
+        <h2 class="text-lg font-semibold text-white">Trade Settings</h2>
+
+        <div class="bg-slate-800 p-4 rounded-lg">
+          <p class="text-slate-300 text-sm">
+            <span class="font-semibold text-indigo-400">Order Amount:</span>
+            이 전략은 매 거래 시
+            <span class="text-white font-semibold">
+              {{ strategy.rules.trade_settings.order_amount_percent }}%</span
+            >
+            의 자산을 사용하여 포지션을 잡습니다.
+          </p>
+        </div>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useStrategyStore } from '@/stores/useStrategyStore'
 import type { Strategy } from '@/types/Strategy'
+import ConditionList from '@/components/Strategy/ConditionList.vue'
 
 const props = defineProps<{ id: string | number }>()
 const router = useRouter()
-const strategyStore = useStrategyStore()
+const store = useStrategyStore()
 
 const strategy = ref<Strategy | null>(null)
 const isLoading = ref(true)
 
-// Extracts indicator strings (like 'bb.20.middle') from the rules object
-const usedIndicators = computed(() => {
-  const indicators = new Set<string>()
-  if (!strategy.value?.rules) return indicators
-
-  function parseCondition(condition: any) {
-    if (!condition) return
-    if (Array.isArray(condition)) {
-      condition.forEach(parseCondition)
-    } else if (typeof condition === 'object') {
-      if (condition.lhs && typeof condition.lhs === 'string' && condition.lhs.includes('.')) indicators.add(condition.lhs)
-      if (condition.rhs && typeof condition.rhs === 'string' && condition.rhs.includes('.')) indicators.add(condition.rhs)
-      // Recursively parse nested conditions
-      if (condition.condition) parseCondition(condition.condition)
-      if (condition.entry) parseCondition(condition.entry)
-      if (condition.exit) parseCondition(condition.exit)
-    }
-  }
-
-  parseCondition(strategy.value.rules.buy_condition)
-  parseCondition(strategy.value.rules.sell_condition)
-
-  return indicators
-})
-
 onMounted(async () => {
   isLoading.value = true
-  const fetched = await strategyStore.fetchStrategyById(props.id)
-  if (fetched) {
-    strategy.value = fetched
-  }
+  const data = await store.fetchStrategyById(props.id)
+  strategy.value = data ?? null
   isLoading.value = false
 })
 
 async function onDelete() {
-  if (confirm('Are you sure you want to delete this strategy?') && strategy.value?.strategy_id) {
-    await strategyStore.remove(strategy.value.strategy_id)
+  if (confirm('Delete this strategy?') && strategy.value?.strategy_id) {
+    await store.remove(strategy.value.strategy_id)
     router.push({ name: 'strategies' })
   }
 }
 </script>
+
+<style scoped>
+.card {
+  @apply rounded-xl bg-slate-900/60 border border-slate-700/60 shadow-lg;
+}
+</style>
