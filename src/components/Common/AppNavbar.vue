@@ -322,11 +322,10 @@ function onEnter() {
 .logo .c::after {
   content: '';
   position: absolute;
-  left: 2px;
+  left: 2.4px;
   bottom: 19.5px;
   width: 43px;
   height: 2px;
   background: rgb(255, 255, 255);
-  border-radius: 2px;
 }
 </style>
