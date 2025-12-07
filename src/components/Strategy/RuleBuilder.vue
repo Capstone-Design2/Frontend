@@ -220,7 +220,6 @@
           </div>
         </div>
       </div>
-
       <p
         v-else
         class="rounded-lg border border-dashed border-slate-700/70 bg-slate-900 px-4 py-3 text-sm text-slate-400"

@@ -63,10 +63,9 @@ export interface ConditionDetail {
 
 export interface ConditionsState {
   indicators: ConditionDetail
-  buy_entry: ConditionDetail
-  buy_exit: ConditionDetail
-  sell_entry: ConditionDetail
-  sell_exit: ConditionDetail
+  buy_conditions: ConditionDetail
+  sell_conditions: ConditionDetail
+  trade_settings: ConditionDetail
 }
 
 export interface StrategyChatResponse {
