@@ -1,5 +1,5 @@
 <template>
-  <form @submit.prevent="onSave" class="space-y-8 max-w-5xl mx-auto">
+  <form @submit.prevent="onSave" class="space-y-10 max-w-5xl mx-auto">
     <!-- 헤더 / 요약 -->
     <section class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
@@ -21,7 +21,7 @@
     </section>
 
     <!-- SECTION: 기본 정보 + Trade Settings -->
-    <section class="card p-6 space-y-4">
+    <section class="card p-6 space-y-6">
       <div class="flex items-center justify-between gap-4">
         <div class="flex items-center gap-2">
           <span class="i-ph-strategy-duotone text-xl"></span>
@@ -64,7 +64,7 @@
     </section>
 
     <!-- SECTION: Indicators -->
-    <section class="card p-6 space-y-4">
+    <section class="card p-6 space-y-6">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="i-ph-chart-line-duotone text-xl"></span>
@@ -243,7 +243,7 @@
     </section>
 
     <!-- SECTION: Buy Conditions -->
-    <section class="card p-6 space-y-4">
+    <section class="card p-6 space-y-6">
       <ConditionGroup
         title="Buy Conditions"
         v-model="strategy.buy_conditions"
@@ -252,7 +252,7 @@
     </section>
 
     <!-- SECTION: Sell Conditions -->
-    <section class="card p-6 space-y-4">
+    <section class="card p-6 space-y-6">
       <ConditionGroup
         title="Sell Conditions"
         v-model="strategy.sell_conditions"
