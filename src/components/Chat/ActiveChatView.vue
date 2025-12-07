@@ -180,14 +180,12 @@ function conditionLabel(key: string) {
   switch (key) {
     case 'indicators':
       return '지표 설정'
-    case 'buy_entry':
-      return '매수 진입 조건'
-    case 'buy_exit':
-      return '매수 청산 조건'
-    case 'sell_entry':
-      return '매도 진입 조건'
-    case 'sell_exit':
-      return '매도 청산 조건'
+    case 'buy_conditions':
+      return '매수 조건'
+    case 'sell_conditions':
+      return '매도 조건'
+    case 'trade_settings':
+      return '거래 설정'
     default:
       return key
   }

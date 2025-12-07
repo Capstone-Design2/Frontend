@@ -164,15 +164,7 @@
 
     <!-- 버튼 -->
     <section class="flex items-center justify-between">
-      <div class="flex gap-2">
-        <button type="button" class="btn-outline" @click="applyPreset('conservative')">
-          Conservative
-        </button>
-        <button type="button" class="btn-outline" @click="applyPreset('neutral')">Neutral</button>
-        <button type="button" class="btn-outline" @click="applyPreset('aggressive')">
-          Aggressive
-        </button>
-      </div>
+      <div class="flex gap-2"></div>
       <button type="submit" class="btn-primary" :disabled="!isValid">Save Strategy</button>
     </section>
   </form>
