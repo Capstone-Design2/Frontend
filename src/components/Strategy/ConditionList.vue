@@ -7,7 +7,7 @@
 
     <div v-else-if="isAny">
       <p class="text-slate-400 text-xs mb-3">아래 조건 중 하나라도 만족할 때</p>
-      <FlowList :items="group.all!" :indicators="indicators" />
+      <FlowList :items="group.any!" :indicators="indicators" />
     </div>
 
     <p v-else class="text-slate-500 text-sm">No conditions defined.</p>

@@ -53,7 +53,7 @@
           />
         </div>
         <div>
-          <label class="label">Description (optional)</label>
+          <label class="label">Description</label>
           <input
             v-model="description"
             class="input"
@@ -71,9 +71,6 @@
           <h2 class="text-lg font-semibold">Indicators</h2>
         </div>
         <div class="flex flex-wrap gap-2 text-xs text-slate-400">
-          <span class="rounded-full bg-slate-800 px-2 py-1"
-            >SMA / EMA / RSI / MACD / BBANDS / ATR / STOCH</span
-          >
           <span class="rounded-full bg-slate-800 px-2 py-1"
             >PRICE (close/open/high/low/volume)는 조건에서 직접 사용</span
           >
@@ -130,12 +127,9 @@
 
             <!-- Alias -->
             <div class="space-y-1">
-              <label class="label text-xs">Alias (name)</label>
+              <label class="label text-xs">Name</label>
               <input class="input" v-model="ind.name" :placeholder="suggestAliasPlaceholder(ind)" />
-              <p class="mt-1 text-xs text-slate-500">
-                조건에서 <code class="rounded bg-slate-800 px-1">indicator1 / indicator2</code> 로
-                참조할 이름
-              </p>
+              <p class="mt-1 text-xs text-slate-500"></p>
             </div>
 
             <!-- Params  -->
@@ -155,19 +149,19 @@
               <!-- MACD -->
               <div v-else-if="ind.type === 'MACD'" class="grid grid-cols-3 gap-2">
                 <div>
-                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                  <div class="flex items-center justify-center text-[11px] text-slate-400">
                     <span>fast</span>
                   </div>
                   <input type="number" min="1" class="input" v-model.number="ind.params.fast" />
                 </div>
                 <div>
-                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                  <div class="flex items-center justify-center text-[11px] text-slate-400">
                     <span>slow</span>
                   </div>
                   <input type="number" min="1" class="input" v-model.number="ind.params.slow" />
                 </div>
                 <div>
-                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                  <div class="flex items-center justify-center text-[11px] text-slate-400">
                     <span>signal</span>
                   </div>
                   <input type="number" min="1" class="input" v-model.number="ind.params.signal" />
@@ -214,7 +208,7 @@
 
               <!-- Fallback -->
               <div v-else class="text-xs text-slate-500">
-                이 지표에 대한 파라미터 UI는 정의되지 않았습니다. JSON에서 직접 수정할 수 있습니다.
+                이 지표에 대한 파라미터 UI는 정의되지 않았습니다.JSON에서 직접 수정할 수 있습니다.
               </div>
             </div>
           </div>
@@ -248,6 +242,7 @@
         title="Buy Conditions"
         v-model="strategy.buy_conditions"
         :indicatorOptions="indicatorOptions"
+        :indicators="strategy.indicators"
       />
     </section>
 
@@ -257,6 +252,7 @@
         title="Sell Conditions"
         v-model="strategy.sell_conditions"
         :indicatorOptions="indicatorOptions"
+        :indicators="strategy.indicators"
       />
     </section>
 
@@ -276,7 +272,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref, toRaw } from 'vue'
+import { reactive, computed, ref } from 'vue'
 import ConditionGroup from './ConditionGroup.vue'
 import { validateStrategy } from '../../utils/strategyValidator'
 
@@ -314,6 +310,18 @@ type Condition = {
   _num?: string
   _num3?: string
   _initialized?: boolean
+  // MACD 서브 선택
+  indicator1_macd_part?: '' | 'hist' | 'signal'
+  indicator2_macd_part?: '' | 'hist' | 'signal'
+  indicator3_macd_part?: '' | 'hist' | 'signal'
+  // BBANDS 서브 선택
+  indicator1_bb_part?: '' | 'lower' | 'upper'
+  indicator2_bb_part?: '' | 'lower' | 'upper'
+  indicator3_bb_part?: '' | 'lower' | 'upper'
+  // STOCH 서브 선택
+  indicator1_stoch_part?: '' | 'k' | 'd'
+  indicator2_stoch_part?: '' | 'k' | 'd'
+  indicator3_stoch_part?: '' | 'k' | 'd'
 }
 
 type ConditionGroupValue = { all: Condition[]; any?: never } | { any: Condition[]; all?: never }
@@ -408,16 +416,76 @@ function suggestAliasPlaceholder(ind: Indicator): string {
 const indicatorOptions = computed(() => strategy.indicators.map((i) => i.name).filter((n) => !!n))
 const isValid = computed(() => validateStrategy(strategy))
 
+const BUILT_IN_SERIES = ['price', 'close', 'open', 'high', 'low', 'volume'] as const
+
+function resolveIndicatorField(
+  raw: string,
+  part: '' | 'hist' | 'signal' | 'lower' | 'upper' | 'k' | 'd' | undefined,
+): string {
+  // 숫자면 그대로
+  if (!isNaN(Number(raw))) return raw
+
+  // price → close
+  if (raw === 'price') return 'close'
+  if (BUILT_IN_SERIES.includes(raw as any)) return raw
+
+  const root = raw.split('.')[0]
+  const ind = strategy.indicators.find((i) => i.name === root)
+  if (!ind) return raw
+
+  const type = ind.type.toUpperCase()
+
+  // ----------------------------------
+  // MACD
+  // ----------------------------------
+  if (type === 'MACD') {
+    const p = ind.params
+    const suf = `${p.fast}_${p.slow}_${p.signal}`
+
+    if (!part || part === '') return `${root}.MACD_${suf}`
+    if (part === 'hist') return `${root}.MACDh_${suf}`
+    if (part === 'signal') return `${root}.MACDs_${suf}`
+  }
+
+  // ----------------------------------
+  // BBANDS
+  // ----------------------------------
+  if (type === 'BBANDS') {
+    const p = ind.params
+    const suf = `${p.length}_${p.std}`
+
+    if (!part || part === '') return `${root}.BBM_${suf}` // Middle band
+    if (part === 'lower') return `${root}.BBL_${suf}` // Lower band
+    if (part === 'upper') return `${root}.BBU_${suf}` // Upper band
+  }
+
+  // ----------------------------------
+  // STOCH
+  // ----------------------------------
+  if (type === 'STOCH') {
+    const p = ind.params
+    const suf = `${p.k}_${p.d}_${p.smooth_k}`
+
+    if (!part || part === '') return `${root}.STOCHk_${suf}`
+    if (part === 'k') return `${root}.STOCHk_${suf}`
+    if (part === 'd') return `${root}.STOCHd_${suf}`
+  }
+
+  return raw
+}
+
 function normalizeConditions(group: ConditionGroupValue): ConditionGroupValue {
   const key = 'all' in group ? 'all' : 'any'
   const list = (group as any)[key] as Condition[]
 
   const normalized = list.map((c) => {
+    // indicator2 문자열/숫자 정리
     let indicator2 = c.indicator2
     if (indicator2 === 'num' && c._num && c._num.trim() !== '') {
       indicator2 = String(c._num.trim())
     }
 
+    // indicator3 문자열/숫자 정리
     let indicator3: string | undefined = c.indicator3
     if (c.operator === 'between' || c.operator === 'outside') {
       if (c.indicator3 === 'num' && c._num3 && c._num3.trim() !== '') {
@@ -427,16 +495,49 @@ function normalizeConditions(group: ConditionGroupValue): ConditionGroupValue {
       indicator3 = undefined
     }
 
+    // indicator 타입 확인
+    const ind1 = strategy.indicators.find((i) => i.name === c.indicator1)
+    const ind2 = strategy.indicators.find((i) => i.name === indicator2)
+    const ind3 = strategy.indicators.find((i) => i.name === indicator3)
+
+    const part1 =
+      ind1?.type === 'MACD'
+        ? c.indicator1_macd_part
+        : ind1?.type === 'BBANDS'
+          ? c.indicator1_bb_part
+          : ind1?.type === 'STOCH'
+            ? c.indicator1_stoch_part
+            : undefined
+
+    const part2 =
+      ind2?.type === 'MACD'
+        ? c.indicator2_macd_part
+        : ind2?.type === 'BBANDS'
+          ? c.indicator2_bb_part
+          : ind2?.type === 'STOCH'
+            ? c.indicator2_stoch_part
+            : undefined
+
+    const part3 =
+      ind3?.type === 'MACD'
+        ? c.indicator3_macd_part
+        : ind3?.type === 'BBANDS'
+          ? c.indicator3_bb_part
+          : ind3?.type === 'STOCH'
+            ? c.indicator3_stoch_part
+            : undefined
+
     const base: any = {
-      indicator1: c.indicator1,
+      indicator1: resolveIndicatorField(c.indicator1, part1),
       operator: c.operator,
-      indicator2,
+      indicator2: resolveIndicatorField(indicator2, part2),
     }
 
     if (indicator3 !== undefined && indicator3 !== '') {
-      base.indicator3 = indicator3
+      base.indicator3 = resolveIndicatorField(indicator3, part3)
     }
 
+    // lookback 처리
     if (
       (c.operator === 'percent_change_above' ||
         c.operator === 'percent_change_below' ||
@@ -488,3 +589,16 @@ function onSave() {
   emit('save', payload)
 }
 </script>
+
+<style>
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+</style>
