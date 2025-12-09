@@ -15,18 +15,18 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "vue": "^3.5.17",
-    "pinia": "^2.2.6",
-    "vue-router": "^4.4.5",
     "axios": "^1.7.7",
-    "socket.io-client": "^4.8.1",
-    "lightweight-charts": "^4.2.0",
+    "chart.js": "^4.5.1",
     "date-fns": "^4.1.0",
-    "zod": "^3.23.8",
-    "jwt-decode": "^4.0.0"
+    "jwt-decode": "^4.0.0",
+    "lightweight-charts": "^4.2.0",
+    "pinia": "^2.2.6",
+    "socket.io-client": "^4.8.1",
+    "vue": "^3.5.17",
+    "vue-router": "^4.4.5",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-
     "@tsconfig/node22": "^22.0.2",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.15.32",
@@ -39,8 +39,8 @@
     "autoprefixer": "^10.4.21",
     "eslint": "^9.29.0",
     "eslint-plugin-vue": "~10.2.0",
-    "jiti": "^2.4.2",
     "happy-dom": "^15.11.7",
+    "jiti": "^2.4.2",
     "jsdom": "^26.1.0",
     "npm-run-all2": "^8.0.4",
     "postcss": "^8.5.6",
