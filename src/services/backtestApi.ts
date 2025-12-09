@@ -64,3 +64,13 @@ export const getBacktestJobs = async (
   })
   return response.data
 }
+
+/**
+ * 백테스트 결과를 삭제합니다.
+ * @param resultId - 삭제할 백테스트 결과 ID
+ * @returns 삭제 결과 메시지
+ */
+export const deleteBacktestResult = async (resultId: number): Promise<{ message: string; result_id: number }> => {
+  const response = await http.delete(`/backtest/results/${resultId}`)
+  return response.data
+}

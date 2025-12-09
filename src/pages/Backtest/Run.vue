@@ -154,44 +154,65 @@
             :key="result.result_id"
             class="hover:bg-slate-800/50 transition-colors"
           >
-            <button
-              type="button"
-              class="w-full text-left flex items-center justify-between px-6 py-4 cursor-pointer"
-              @click="viewResult(result.job_id)"
-            >
-              <div class="flex-1">
-                <p class="text-sm font-medium text-slate-200">{{ result.kpi.strategy_name }}</p>
-                <p class="text-sm text-slate-400">
-                  Job ID: {{ result.job_id }} · {{ formatDate(result.created_at) }}
-                </p>
-              </div>
-              <div class="flex items-center space-x-4">
-                <div class="text-right">
-                  <p
-                    class="text-sm font-medium tabular-nums"
-                    :class="result.kpi.total_return >= 0 ? 'text-emerald-400' : 'text-rose-400'"
-                  >
-                    수익률: {{ formatPercent(result.kpi.total_return) }}
-                  </p>
-                  <p class="text-sm text-slate-400 tabular-nums">
-                    샤프: {{ result.kpi.sharpe_ratio?.toFixed(2) ?? 'N/A' }} · MDD:
-                    {{ formatPercent(result.max_drawdown) }}
+            <div class="w-full flex items-center justify-between px-6 py-4">
+              <button
+                type="button"
+                class="flex-1 text-left flex items-center justify-between cursor-pointer"
+                @click="viewResult(result.job_id)"
+              >
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-slate-200">{{ result.kpi.strategy_name }}</p>
+                  <p class="text-sm text-slate-400">
+                    Job ID: {{ result.job_id }} · {{ formatDate(result.created_at) }}
                   </p>
                 </div>
+                <div class="flex items-center space-x-4">
+                  <div class="text-right">
+                    <p
+                      class="text-sm font-medium tabular-nums"
+                      :class="result.kpi.total_return >= 0 ? 'text-emerald-400' : 'text-rose-400'"
+                    >
+                      수익률: {{ formatPercent(result.kpi.total_return) }}
+                    </p>
+                    <p class="text-sm text-slate-400 tabular-nums">
+                      샤프: {{ result.kpi.sharpe_ratio?.toFixed(2) ?? 'N/A' }} · MDD:
+                      {{ formatPercent(result.max_drawdown) }}
+                    </p>
+                  </div>
+                  <svg
+                    class="h-5 w-5 text-slate-500"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </button>
+              <button
+                type="button"
+                @click.stop="deleteResult(result.result_id)"
+                class="ml-3 p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors"
+                title="삭제"
+              >
                 <svg
-                  class="h-5 w-5 text-slate-500"
+                  class="h-5 w-5"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 20 20"
                   fill="currentColor"
                 >
                   <path
                     fill-rule="evenodd"
-                    d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                    d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
                     clip-rule="evenodd"
                   />
                 </svg>
-              </div>
-            </button>
+              </button>
+            </div>
           </li>
         </ul>
       </div>
@@ -289,6 +310,21 @@ const viewResult = (jobId: number) => {
     name: 'backtest-results',
     params: { jobId: jobId.toString() },
   })
+}
+
+const deleteResult = async (resultId: number) => {
+  if (!confirm('이 백테스팅 결과를 삭제하시겠습니까?')) {
+    return
+  }
+
+  try {
+    await backtestStore.deleteResult(resultId)
+    // 성공 시 목록 새로고침
+    await backtestStore.fetchResults(5)
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '백테스팅 결과 삭제 중 오류가 발생했습니다.'
+    console.error('Delete result error:', err)
+  }
 }
 
 const formatDate = (dateStr: string) => {

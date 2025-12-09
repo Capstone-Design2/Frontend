@@ -10,6 +10,7 @@ import {
   getBacktestResultByJobId,
   getBacktestResults,
   getBacktestJobs,
+  deleteBacktestResult as deleteBacktestResultApi,
 } from '@/services/backtestApi'
 import { getDailySeries } from '@/services/marketApi'
 
@@ -147,6 +148,28 @@ export const useBacktestStore = defineStore('backtest', {
     clearCurrentResult() {
       this.currentResult = null
       this.error = null
+    },
+
+    /**
+     * 백테스트 결과를 삭제합니다
+     */
+    async deleteResult(resultId: number): Promise<void> {
+      this.isLoading = true
+      this.error = null
+      try {
+        await deleteBacktestResultApi(resultId)
+        // 목록에서 삭제된 결과 제거
+        this.results = this.results.filter((r) => r.result_id !== resultId)
+        // 현재 결과가 삭제된 경우 초기화
+        if (this.currentResult?.result_id === resultId) {
+          this.currentResult = null
+        }
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Failed to delete result'
+        throw err
+      } finally {
+        this.isLoading = false
+      }
     },
 
     // ===== 레거시 지원 (단순 Buy & Hold) =====
