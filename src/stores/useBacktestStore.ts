@@ -1,13 +1,26 @@
 import { defineStore } from 'pinia'
-import type { BacktestRun, BacktestResult } from '@/types/Backtest'
-import { getDailySeries } from '@/services/marketApi' // ← UDF 기반 일봉 시리즈 (time: unix, close)
+import type {
+  BacktestResult,
+  BacktestRunRequest,
+  BacktestJob,
+  BacktestRun,
+} from '@/types/Backtest'
+import {
+  runBacktest as runBacktestApi,
+  getBacktestResultByJobId,
+  getBacktestResults,
+  getBacktestJobs,
+  deleteBacktestResult as deleteBacktestResultApi,
+} from '@/services/backtestApi'
+import { getDailySeries } from '@/services/marketApi'
 
+// 레거시 지원용
 const KEY = 'backtest.runs.v2'
 const VERSION = 2
 
 type PersistShape = {
   version: number
-  runs: BacktestResult[]
+  runs: any[]
 }
 
 function isPersistShape(x: unknown): x is PersistShape {
@@ -28,7 +41,6 @@ function stdev(xs: number[]): number {
   return Math.sqrt(v)
 }
 function calcMdd(series: number[]): number {
-  // series: 누적 지수(혹은 가격). MDD는 양수 비율로 반환.
   let peak = series[0]
   let mdd = 0
   for (const v of series) {
@@ -41,10 +53,127 @@ function calcMdd(series: number[]): number {
 
 export const useBacktestStore = defineStore('backtest', {
   state: () => ({
-    runs: [] as BacktestResult[],
+    // 새로운 백테스팅 시스템
+    results: [] as BacktestResult[],
+    jobs: [] as BacktestJob[],
+    currentResult: null as BacktestResult | null,
+    isLoading: false,
+    error: null as string | null,
+
+    // 레거시 (하위 호환성 유지)
+    runs: [] as any[],
   }),
 
+  getters: {
+    completedJobs: (state) => state.jobs.filter((job) => job.status === 'COMPLETED'),
+    runningJobs: (state) => state.jobs.filter((job) => job.status === 'RUNNING'),
+    failedJobs: (state) => state.jobs.filter((job) => job.status === 'FAILED'),
+  },
+
   actions: {
+    // ===== 새로운 백테스팅 시스템 =====
+
+    /**
+     * 백테스팅을 실행합니다 (백엔드 API 호출)
+     */
+    async executeBacktest(request: BacktestRunRequest): Promise<BacktestResult> {
+      this.isLoading = true
+      this.error = null
+      try {
+        const result = await runBacktestApi(request)
+        this.currentResult = result
+        await this.fetchResults()
+        return result
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Backtest execution failed'
+        throw err
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    /**
+     * Job ID로 백테스팅 결과를 조회합니다
+     */
+    async fetchResultByJobId(jobId: number): Promise<BacktestResult> {
+      this.isLoading = true
+      this.error = null
+      try {
+        const result = await getBacktestResultByJobId(jobId)
+        this.currentResult = result
+        return result
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Failed to fetch result'
+        throw err
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    /**
+     * 사용자의 백테스팅 결과 목록을 조회합니다
+     */
+    async fetchResults(limit: number = 20, offset: number = 0): Promise<void> {
+      this.isLoading = true
+      this.error = null
+      try {
+        this.results = await getBacktestResults(limit, offset)
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Failed to fetch results'
+        throw err
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    /**
+     * 사용자의 백테스트 Job 목록을 조회합니다
+     */
+    async fetchJobs(status?: string, limit: number = 20, offset: number = 0): Promise<void> {
+      this.isLoading = true
+      this.error = null
+      try {
+        this.jobs = await getBacktestJobs(status, limit, offset)
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Failed to fetch jobs'
+        throw err
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    /**
+     * 현재 결과를 초기화합니다
+     */
+    clearCurrentResult() {
+      this.currentResult = null
+      this.error = null
+    },
+
+    /**
+     * 백테스트 결과를 삭제합니다
+     */
+    async deleteResult(resultId: number): Promise<void> {
+      this.isLoading = true
+      this.error = null
+      try {
+        await deleteBacktestResultApi(resultId)
+        // 목록에서 삭제된 결과 제거
+        this.results = this.results.filter((r) => r.result_id !== resultId)
+        // 현재 결과가 삭제된 경우 초기화
+        if (this.currentResult?.result_id === resultId) {
+          this.currentResult = null
+        }
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Failed to delete result'
+        throw err
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    // ===== 레거시 지원 (단순 Buy & Hold) =====
+
     restore() {
       const raw = localStorage.getItem(KEY)
       if (!raw) return
@@ -53,7 +182,6 @@ export const useBacktestStore = defineStore('backtest', {
         if (isPersistShape(parsed) && parsed.version === VERSION) {
           this.runs = parsed.runs
         } else {
-          // 버전 불일치 → 초기화
           this.runs = []
           this.persist()
         }
@@ -68,29 +196,21 @@ export const useBacktestStore = defineStore('backtest', {
       localStorage.setItem(KEY, JSON.stringify(payload))
     },
 
-    /**
-     * 단순 보유(Buy & Hold) 백테스트
-     * - params.symbol만 사용 (기존 타입과 호환)
-     * - 최근 500일 기준 (필요하면 getDailySeries의 limit 변경)
-     */
     async runBacktest(params: BacktestRun) {
-      const series = await getDailySeries(params.symbol, 500) // { time, close }[]
+      const series = await getDailySeries(params.symbol, 500)
       if (series.length < 2) throw new Error('Not enough data')
 
-      // 시간/가격 벡터
-      const times = series.map((p) => p.time) // unix seconds
+      const times = series.map((p) => p.time)
       const prices = series.map((p) => p.close)
 
       const startPrice = prices[0]
       const endPrice = prices[prices.length - 1]
       const totalReturn = (endPrice - startPrice) / startPrice
 
-      // CAGR 계산 (연율): 년수 = (마지막-처음)초 / (365*24*3600)
       const seconds = times[times.length - 1] - times[0]
-      const years = Math.max(seconds / (365 * 24 * 3600), 1 / 365) // 최소 하루 가정
+      const years = Math.max(seconds / (365 * 24 * 3600), 1 / 365)
       const cagr = Math.pow(1 + totalReturn, 1 / years) - 1
 
-      // Sharpe (무위험 수익률 0 가정, 252 거래일)
       const dailyRets: number[] = []
       for (let i = 1; i < prices.length; i++) {
         const r = (prices[i] - prices[i - 1]) / prices[i - 1]
@@ -100,23 +220,15 @@ export const useBacktestStore = defineStore('backtest', {
       const sd = stdev(dailyRets)
       const sharpe = sd > 0 ? (avg / sd) * Math.sqrt(252) : 0
 
-      // MDD (가격 시퀀스 기준)
       const mdd = calcMdd(prices)
-
-      // Equity curve: 가격 그대로 사용 (원하면 100 기준 정규화도 가능)
       const equityCurve = series.map((p) => ({ time: p.time, value: p.close }))
 
-      const result: BacktestResult = {
+      const result: any = {
         id: crypto.randomUUID(),
         params,
-        kpis: {
-          totalReturn,
-          cagr,
-          sharpe,
-          mdd,
-        },
+        kpis: { totalReturn, cagr, sharpe, mdd },
         equityCurve,
-        trades: [], // 단순 보유이므로 트레이드 없음
+        trades: [],
       }
 
       this.runs.unshift(result)

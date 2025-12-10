@@ -52,7 +52,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
     children: [
       { path: 'run', name: 'backtest-run', component: BacktestRun },
-      { path: 'results/:id', name: 'backtest-results', component: BacktestResults },
+      {
+        path: 'results/:jobId',
+        name: 'backtest-results',
+        component: BacktestResults,
+        props: true
+      },
       { path: 'history', name: 'backtest-history', component: BacktestHistory },
     ],
   },
