@@ -1,11 +1,16 @@
 <template>
   <div class="px-4 md:px-8 lg:px-12 pt-6 pb-4">
     <div class="card p-6 h-[calc(100vh-8rem)] overflow-hidden max-w-[1500px] mx-auto">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+      <div class="relative grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
         <!-- LEFT -->
         <div class="h-full overflow-y-auto pr-3 scrollbar-hide">
           <RuleBuilder :presets="presets" @save="onSave" />
         </div>
+
+        <!-- Divider -->
+        <div
+          class="absolute left-1/2 -translate-x-1/2 w-px bg-gray-100/20 dark:bg-slate-800 h-full hidden md:block"
+        ></div>
 
         <!-- RIGHT -->
         <div class="sticky top-20 h-[calc(100vh-10rem)]">
