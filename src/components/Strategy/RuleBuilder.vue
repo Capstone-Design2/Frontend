@@ -607,8 +607,24 @@ const emit = defineEmits<{
   (e: 'save', value: StrategyDefinition): void
 }>()
 
+function loadStrategy(rules: any) {
+  const newStrategy = JSON.parse(JSON.stringify(rules))
+  strategy.strategy_name = newStrategy.strategy_name || ''
+  strategy.indicators = newStrategy.indicators || []
+  strategy.buy_conditions = newStrategy.buy_conditions || { all: [] }
+  strategy.sell_conditions = newStrategy.sell_conditions || { all: [] }
+  if (newStrategy.trade_settings && typeof newStrategy.trade_settings.order_amount_percent === 'number') {
+    strategy.trade_settings.order_amount_percent = newStrategy.trade_settings.order_amount_percent
+  }
+}
+defineExpose({ loadStrategy })
+
 function onSave() {
-  if (!isValid.value) return
+  console.log('RuleBuilder onSave triggered. Is valid?', isValid.value)
+  if (!isValid.value) {
+    console.log('Strategy is invalid, aborting save.')
+    return
+  }
 
   const payload = JSON.parse(
     JSON.stringify({
@@ -624,6 +640,7 @@ function onSave() {
     }),
   )
 
+  console.log('RuleBuilder emitting save with payload:', payload)
   emit('save', payload)
 }
 

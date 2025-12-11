@@ -24,18 +24,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, defineEmits } from 'vue'
 import MessageList from './MessageList.vue'
 import MessageInput from './MessageInput.vue'
 import { useStrategyStore } from '@/stores/useStrategyStore'
-import { useRouter } from 'vue-router'
+
+const emit = defineEmits(['apply-strategy'])
 
 const messages = ref([])
 const newMessage = ref('')
 const isLoading = ref(false)
 
 const strategyStore = useStrategyStore()
-const router = useRouter()
 
 async function sendMessage(text: string) {
   if (!text.trim()) return
@@ -66,22 +66,13 @@ async function sendMessage(text: string) {
   }
 }
 
-async function onConfirmStrategy(strategyJson) {
-  const name = prompt('전략 이름을 입력하세요:')
-  if (!name) return
-
-  await strategyStore.create({
-    strategy_name: name,
-    rules: JSON.parse(strategyJson),
-  })
-
+function onConfirmStrategy(strategyJson) {
+  emit('apply-strategy', strategyJson)
   messages.value.push({
     type: 'bot',
-    text: '전략이 성공적으로 저장되었습니다!',
+    text: '전략을 왼쪽에 적용했습니다. 확인 후 저장해주세요.',
     status: 'chat',
   })
-
-  router.push('/strategies')
 }
 
 function onRejectStrategy() {

@@ -71,7 +71,7 @@
                 class="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition"
                 @click="$emit('confirmStrategy', msg.strategy)"
               >
-                전략 생성하기
+                전략 적용하기
               </button>
 
               <button
