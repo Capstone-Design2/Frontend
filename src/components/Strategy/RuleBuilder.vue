@@ -8,16 +8,6 @@
           인디케이터를 추가하고, 조건을 조합해 나만의 자동매매 전략을 정의하세요.
         </p>
       </div>
-      <div class="flex gap-3">
-        <button
-          type="button"
-          class="btn-outline text-xs"
-          @click="showJsonPreview = !showJsonPreview"
-        >
-          {{ showJsonPreview ? 'Hide' : 'Show' }} JSON Preview
-        </button>
-        <button type="submit" class="btn-primary" :disabled="!isValid">Save Strategy</button>
-      </div>
     </section>
 
     <!-- SECTION: 기본 정보 + Trade Settings -->
@@ -256,18 +246,66 @@
       />
     </section>
 
-    <!-- JSON PREVIEW -->
-    <section v-if="showJsonPreview" class="card p-4">
-      <div class="mb-2 flex items-center justify-between">
-        <h3 class="text-sm font-medium text-slate-200">Strategy JSON Preview</h3>
-        <span class="text-[11px] text-slate-500">
-          백테스트 API의 <code>strategy_definition</code> 그대로 출력
-        </span>
-      </div>
-      <pre class="max-h-80 overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-200"
-        >{{ prettyJson }}
-      </pre>
+    <!-- 하단 버튼 영역 -->
+    <section class="flex justify-center gap-3 pb-6">
+      <button
+        type="button"
+        class="btn-outline text-sm px-6 py-2.5"
+        @click="showJsonPreview = true"
+      >
+        Show JSON Preview
+      </button>
+      <button type="submit" class="btn-primary text-sm px-6 py-2.5" :disabled="!isValid">Save Strategy</button>
     </section>
+
+    <!-- JSON PREVIEW MODAL -->
+    <div
+      v-if="showJsonPreview"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      @click.self="showJsonPreview = false"
+    >
+      <div class="relative w-full max-w-4xl max-h-[80vh] m-4 bg-slate-900 rounded-xl shadow-2xl border border-slate-700 overflow-hidden">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700 bg-slate-800/50">
+          <div>
+            <h3 class="text-lg font-semibold text-slate-100">Strategy JSON Preview</h3>
+            <p class="text-xs text-slate-400 mt-1">
+              백테스트 API의 <code class="text-slate-300">strategy_definition</code> 그대로 출력
+            </p>
+          </div>
+          <button
+            type="button"
+            class="text-slate-400 hover:text-slate-100 transition-colors"
+            @click="showJsonPreview = false"
+          >
+            <span class="i-ph-x text-2xl"></span>
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="overflow-auto p-6" style="max-height: calc(80vh - 140px)">
+          <pre class="rounded bg-slate-950 p-4 text-sm text-slate-200 overflow-x-auto">{{ prettyJson }}</pre>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex justify-end gap-3 px-6 py-4 border-t border-slate-700 bg-slate-800/50">
+          <button
+            type="button"
+            class="btn-outline text-sm px-4 py-2"
+            @click="copyToClipboard"
+          >
+            Copy JSON
+          </button>
+          <button
+            type="button"
+            class="btn-primary text-sm px-4 py-2"
+            @click="showJsonPreview = false"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   </form>
 </template>
 
@@ -587,6 +625,15 @@ function onSave() {
   )
 
   emit('save', payload)
+}
+
+async function copyToClipboard() {
+  try {
+    await navigator.clipboard.writeText(prettyJson.value)
+    alert('JSON copied to clipboard!')
+  } catch (err) {
+    console.error('Failed to copy:', err)
+  }
 }
 </script>
 

@@ -17,7 +17,7 @@ app.use(router)
 
 // ✅ 안전하게 복원
 const auth = useAuthStore()
-auth.restore?.()
+await auth.restore?.()
 
 const portfolio = usePortfolioStore()
 portfolio.restore?.()

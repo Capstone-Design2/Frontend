@@ -42,10 +42,14 @@ function extractMessage(error: AxiosError<ApiErrorResponse>): string {
 // Request 인터셉터: 토큰 주입
 http.interceptors.request.use((config) => {
   const { token } = useAuthStore()
+  console.log('🔑 [HTTP] Request interceptor - Token:', token ? token.substring(0, 20) + '...' : 'NONE')
   if (token) {
     const headers: AxiosRequestHeaders = (config.headers ?? {}) as AxiosRequestHeaders
     headers.Authorization = `Bearer ${token}`
     config.headers = headers
+    console.log('✅ [HTTP] Authorization header added')
+  } else {
+    console.warn('⚠️ [HTTP] No token found, request will be sent without authorization')
   }
   return config
 })

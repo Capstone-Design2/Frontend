@@ -111,8 +111,8 @@
               <!-- 기본 비교 -->
               <option value="is_above">is above (&gt;)</option>
               <option value="is_below">is below (&lt;)</option>
-              <option value="is_above_or_equal">is ≥ (above or equal)</option>
-              <option value="is_below_or_equal">is ≤ (below or equal)</option>
+              <option value="is_above_or_equal">is above or equal (≥)</option>
+              <option value="is_below_or_equal">is below or equal (≤)</option>
               <option value="equals">equals (=)</option>
               <option value="not_equals">not equals (≠)</option>
 
