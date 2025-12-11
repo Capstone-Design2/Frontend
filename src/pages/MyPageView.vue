@@ -403,7 +403,7 @@ async function handleCancelOrder(orderId: number) {
 // Profile 관련
 function syncFormWithStore() {
   if (auth.user) {
-    form.username = auth.user.username
+    form.username = auth.user.name
     form.email = auth.user.email
   }
 }

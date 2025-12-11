@@ -53,10 +53,28 @@ export async function loginApi(req: LoginReq): Promise<LoginRes> {
 export async function meApi(): Promise<User> {
   // http 인터셉터가 Authorization 헤더를 붙여줌
   const res = await http.get('/auth/me')
-  return res.data as User
+  const data = res.data as { id?: string; user_id?: number; email: string; name: string }
+
+  // 백엔드가 user_id 또는 id를 반환할 수 있으므로 처리
+  const userId = data.id || (data.user_id ? String(data.user_id) : '')
+
+  return {
+    id: userId,
+    email: data.email,
+    name: data.name,
+  }
 }
 
 export async function updateUserApi(userId: string, req: UpdateUserReq): Promise<User> {
-  const res = await http.put(`/users/${encodeURIComponent(userId)}`, req)
-  return res.data as User
+  const res = await http.put(`/user/${encodeURIComponent(userId)}`, req)
+  const data = res.data as { id?: string; user_id?: number; email: string; name: string }
+
+  // 백엔드가 user_id 또는 id를 반환할 수 있으므로 처리
+  const id = data.id || (data.user_id ? String(data.user_id) : '')
+
+  return {
+    id,
+    email: data.email,
+    name: data.name,
+  }
 }

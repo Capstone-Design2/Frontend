@@ -72,7 +72,10 @@ async function onSubmit() {
   loading.value = true
   try {
     await auth.signup({ ...form })
-    ui.pushToast({ type: 'success', message: 'Account created' })
+    ui.pushToast({ type: 'success', message: 'Account created. Logging you in...' })
+    // 회원가입 성공 후 자동 로그인
+    await auth.login({ username: form.email, password: form.password })
+    ui.pushToast({ type: 'success', message: 'Welcome!' })
     router.push('/')
   } catch (err: unknown) {
     ui.pushToast({ type: 'error', message: parseErrorMessage(err) })
