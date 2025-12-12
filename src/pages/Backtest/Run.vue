@@ -285,6 +285,7 @@ const handleSubmit = async () => {
       start_date: startDate.value,
       end_date: endDate.value,
       strategy_definition: selectedStrategy.value.rules,
+      strategy_id: selectedStrategy.value.strategy_id,
     })
 
     // 최근 결과 목록 새로고침
