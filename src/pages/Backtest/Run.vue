@@ -285,16 +285,18 @@ const handleSubmit = async () => {
       start_date: startDate.value,
       end_date: endDate.value,
       strategy_definition: selectedStrategy.value.rules,
+      strategy_id: selectedStrategy.value.strategy_id,
     })
 
     // 최근 결과 목록 새로고침
     await backtestStore.fetchResults(5)
 
-    // 결과 페이지로 이동
-    router.push({
-      name: 'backtest-results',
-      params: { jobId: result.job_id.toString() },
-    })
+    // 성공 메시지 표시 (자동 이동 제거)
+    alert(`백테스팅이 완료되었습니다! 아래 '최근 백테스트 결과'에서 결과를 확인하세요.`)
+
+    // 폼 초기화 (선택사항)
+    // selectedStrategyId.value = ''
+    // ticker.value = ''
   } catch (err) {
     error.value = err instanceof Error ? err.message : '백테스팅 실행 중 오류가 발생했습니다.'
     console.error('Backtest execution error:', err)
