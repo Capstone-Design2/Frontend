@@ -64,8 +64,21 @@ async function handleTrade(type: 'buy' | 'sell') {
   isSubmitting.value = true
 
   try {
+    // TradingView 형식(KRX:000660 또는 000660.KS)에서 KIS 코드(000660)만 추출
+    let kisCode = symbol.value
+
+    // "KRX:" 접두사 제거
+    if (kisCode.includes(':')) {
+      kisCode = kisCode.split(':')[1]
+    }
+
+    // ".KS" 또는 ".KQ" 접미사 제거
+    if (kisCode.includes('.')) {
+      kisCode = kisCode.split('.')[0]
+    }
+
     const order = await submitOrder({
-      ticker_code: symbol.value,
+      ticker_code: kisCode,
       side: type.toUpperCase() as 'BUY' | 'SELL',
       quantity: quantity.value,
       order_type: 'MARKET',
