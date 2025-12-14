@@ -156,8 +156,8 @@
                     class="rounded px-2 py-0.5 text-xs font-medium"
                     :class="
                       order.side === 'BUY'
-                        ? 'bg-emerald-500/20 text-emerald-300'
-                        : 'bg-rose-500/20 text-rose-300'
+                        ? 'bg-red-500/20 text-red-300'
+                        : 'bg-blue-500/20 text-blue-300'
                     "
                   >
                     {{ order.side === 'BUY' ? '매수' : '매도' }}
@@ -332,7 +332,7 @@ const formatPercent = (value: number | null | undefined) => {
 
 const getProfitColor = (value: number | null | undefined) => {
   if (value === null || value === undefined || value === 0) return 'text-slate-400'
-  return value > 0 ? 'text-rose-400' : 'text-blue-400'
+  return value > 0 ? 'text-red-400' : 'text-blue-400'
 }
 
 // 수익률 계산
@@ -351,7 +351,7 @@ const profitPrefix = computed(() => (balance.value && balance.value.profit_loss 
 
 const profitColorClass = computed(() => {
   if (!balance.value) return 'text-slate-200'
-  return balance.value.profit_loss >= 0 ? 'text-rose-400' : 'text-blue-400'
+  return balance.value.profit_loss >= 0 ? 'text-red-400' : 'text-blue-400'
 })
 
 // 페이지네이션 computed

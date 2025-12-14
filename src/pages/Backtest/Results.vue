@@ -69,7 +69,7 @@
               <dt class="text-sm font-medium text-slate-400 truncate">총 수익률</dt>
               <dd
                 class="mt-1 text-2xl font-semibold tabular-nums"
-                :class="result.kpi.total_return >= 0 ? 'text-emerald-400' : 'text-rose-400'"
+                :class="result.kpi.total_return >= 0 ? 'text-red-400' : 'text-blue-400'"
               >
                 {{ formatPercent(result.kpi.total_return) }}
               </dd>
@@ -82,7 +82,7 @@
               <dt class="text-sm font-medium text-slate-400 truncate">연평균 수익률 (CAGR)</dt>
               <dd
                 class="mt-1 text-2xl font-semibold tabular-nums"
-                :class="result.kpi.cagr >= 0 ? 'text-emerald-400' : 'text-rose-400'"
+                :class="result.kpi.cagr >= 0 ? 'text-red-400' : 'text-blue-400'"
               >
                 {{ formatPercent(result.kpi.cagr) }}
               </dd>
@@ -139,7 +139,7 @@
           <div class="card p-5">
             <dl>
               <dt class="text-sm font-medium text-slate-400 truncate">최대 낙폭 (MDD)</dt>
-              <dd class="mt-1 text-2xl font-semibold text-rose-400 tabular-nums">
+              <dd class="mt-1 text-2xl font-semibold text-blue-400 tabular-nums">
                 {{ formatPercent(result.max_drawdown) }}
               </dd>
             </dl>
@@ -149,7 +149,7 @@
           <div class="card p-5">
             <dl>
               <dt class="text-sm font-medium text-slate-400 truncate">VaR (95%)</dt>
-              <dd class="mt-1 text-2xl font-semibold text-rose-400 tabular-nums">
+              <dd class="mt-1 text-2xl font-semibold text-blue-400 tabular-nums">
                 {{ formatPercent(result.kpi.var_95) }}
               </dd>
             </dl>
@@ -159,7 +159,7 @@
           <div class="card p-5">
             <dl>
               <dt class="text-sm font-medium text-slate-400 truncate">CVaR (95%)</dt>
-              <dd class="mt-1 text-2xl font-semibold text-rose-400 tabular-nums">
+              <dd class="mt-1 text-2xl font-semibold text-blue-400 tabular-nums">
                 {{ formatPercent(result.kpi.cvar_95) }}
               </dd>
             </dl>
@@ -202,8 +202,8 @@
               class="mt-1 text-lg font-semibold tabular-nums"
               :class="
                 result.kpi.final_portfolio_value >= result.kpi.initial_cash
-                  ? 'text-emerald-400'
-                  : 'text-rose-400'
+                  ? 'text-red-400'
+                  : 'text-blue-400'
               "
             >
               {{ formatCurrency(result.kpi.final_portfolio_value) }}
@@ -215,8 +215,8 @@
               class="mt-1 text-lg font-semibold tabular-nums"
               :class="
                 result.kpi.final_portfolio_value - result.kpi.initial_cash >= 0
-                  ? 'text-emerald-400'
-                  : 'text-rose-400'
+                  ? 'text-red-400'
+                  : 'text-blue-400'
               "
             >
               {{ formatCurrency(result.kpi.final_portfolio_value - result.kpi.initial_cash) }}
@@ -321,7 +321,7 @@
                 </td>
                 <td
                   class="px-6 py-4 whitespace-nowrap text-sm font-medium tabular-nums"
-                  :class="trade.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'"
+                  :class="trade.profit >= 0 ? 'text-red-400' : 'text-blue-400'"
                 >
                   {{ trade.type === 'sell' ? formatCurrency(trade.profit) : '-' }}
                 </td>
@@ -515,8 +515,8 @@ const createChart = () => {
         {
           label: '포트폴리오 가치',
           data,
-          borderColor: 'rgb(52, 211, 153)', // emerald-400
-          backgroundColor: 'rgba(52, 211, 153, 0.1)',
+          borderColor: 'rgb(248, 113, 113)', // red-400
+          backgroundColor: 'rgba(248, 113, 113, 0.1)',
           tension: 0.1,
           fill: true,
         },
@@ -605,8 +605,8 @@ const createDrawdownChart = () => {
         {
           label: '드로우다운 (%)',
           data,
-          borderColor: 'rgb(251, 113, 133)', // rose-400
-          backgroundColor: 'rgba(251, 113, 133, 0.1)',
+          borderColor: 'rgb(96, 165, 250)', // blue-400
+          backgroundColor: 'rgba(96, 165, 250, 0.1)',
           tension: 0.1,
           fill: true,
         },
@@ -696,8 +696,8 @@ const createPositionHeatmap = () => {
           label: '포지션',
           data,
           backgroundColor: data.map((val) =>
-            val === 1 ? 'rgba(52, 211, 153, 0.8)' : 'rgba(100, 116, 139, 0.3)'
-          ), // emerald-400 or slate-500
+            val === 1 ? 'rgba(248, 113, 113, 0.8)' : 'rgba(100, 116, 139, 0.3)'
+          ), // red-400 or slate-500
           borderWidth: 0,
           barPercentage: 1,
           categoryPercentage: 1,

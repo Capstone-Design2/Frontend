@@ -170,7 +170,7 @@
                   <div class="text-right">
                     <p
                       class="text-sm font-medium tabular-nums"
-                      :class="result.kpi.total_return >= 0 ? 'text-emerald-400' : 'text-rose-400'"
+                      :class="result.kpi.total_return >= 0 ? 'text-red-400' : 'text-blue-400'"
                     >
                       수익률: {{ formatPercent(result.kpi.total_return) }}
                     </p>
