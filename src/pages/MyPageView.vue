@@ -269,13 +269,15 @@ const formatQuantity = (value: number) =>
   }).format(value)
 
 const formatDateTime = (dateStr: string) => {
-  const date = new Date(dateStr)
+  // UTC 시간을 한국 시간(KST, UTC+9)으로 변환
+  const date = new Date(dateStr + 'Z') // 'Z'를 추가하여 UTC로 파싱
   return date.toLocaleString('ko-KR', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Asia/Seoul',
   })
 }
 
