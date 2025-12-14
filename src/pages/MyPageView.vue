@@ -87,24 +87,34 @@
           <table class="min-w-full divide-y divide-slate-800">
             <thead class="bg-slate-900">
               <tr>
-                <th class="px-4 py-2 text-left text-sm font-semibold">종목 ID</th>
+                <th class="px-4 py-2 text-left text-sm font-semibold">종목</th>
                 <th class="px-4 py-2 text-right text-sm font-semibold">보유 수량</th>
                 <th class="px-4 py-2 text-right text-sm font-semibold">평균 매입가</th>
+                <th class="px-4 py-2 text-right text-sm font-semibold">현재가</th>
                 <th class="px-4 py-2 text-right text-sm font-semibold">평가액</th>
+                <th class="px-4 py-2 text-right text-sm font-semibold">손익</th>
+                <th class="px-4 py-2 text-right text-sm font-semibold">수익률</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800">
               <tr v-if="positions.length === 0">
-                <td colspan="4" class="px-4 py-8 text-center text-slate-400">
+                <td colspan="7" class="px-4 py-8 text-center text-slate-400">
                   보유 중인 포지션이 없습니다
                 </td>
               </tr>
               <tr v-for="pos in positions" :key="pos.position_id">
-                <td class="px-4 py-2 font-medium">종목 #{{ pos.ticker_id }}</td>
+                <td class="px-4 py-2 font-medium">
+                  {{ pos.ticker_code || `종목 #${pos.ticker_id}` }}
+                </td>
                 <td class="px-4 py-2 text-right tabular-nums">{{ formatQuantity(pos.quantity) }}</td>
                 <td class="px-4 py-2 text-right tabular-nums">{{ formatKRW(pos.average_buy_price) }}</td>
-                <td class="px-4 py-2 text-right tabular-nums">
-                  {{ formatKRW(pos.quantity * pos.average_buy_price) }}
+                <td class="px-4 py-2 text-right tabular-nums">{{ formatKRW(pos.current_price) }}</td>
+                <td class="px-4 py-2 text-right tabular-nums">{{ formatKRW(pos.position_value) }}</td>
+                <td class="px-4 py-2 text-right tabular-nums" :class="getProfitColor(pos.profit_loss)">
+                  {{ formatKRW(pos.profit_loss) }}
+                </td>
+                <td class="px-4 py-2 text-right tabular-nums font-medium" :class="getProfitColor(pos.profit_loss)">
+                  {{ formatPercent(pos.profit_loss_rate) }}
                 </td>
               </tr>
             </tbody>
@@ -267,6 +277,17 @@ const formatDateTime = (dateStr: string) => {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+const formatPercent = (value: number | null | undefined) => {
+  if (value === null || value === undefined) return '0.00%'
+  const sign = value >= 0 ? '+' : ''
+  return `${sign}${value.toFixed(2)}%`
+}
+
+const getProfitColor = (value: number | null | undefined) => {
+  if (value === null || value === undefined || value === 0) return 'text-slate-400'
+  return value > 0 ? 'text-rose-400' : 'text-blue-400'
 }
 
 // 수익률 계산
