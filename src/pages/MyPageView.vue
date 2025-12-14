@@ -145,7 +145,7 @@
               <tr v-if="orders.length === 0">
                 <td colspan="8" class="px-4 py-8 text-center text-slate-400">주문 내역이 없습니다</td>
               </tr>
-              <tr v-for="order in orders" :key="order.order_id">
+              <tr v-for="order in paginatedOrders" :key="order.order_id">
                 <td class="px-4 py-2 text-sm text-slate-400 tabular-nums">
                   {{ formatDateTime(order.submitted_at) }}
                 </td>
@@ -189,6 +189,45 @@
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="flex items-center justify-center gap-2 border-t border-slate-800 px-4 py-4">
+          <button
+            @click="goToPage(currentPage - 1)"
+            :disabled="currentPage === 1"
+            class="rounded px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            :class="currentPage === 1
+              ? 'bg-slate-800 text-slate-500'
+              : 'bg-slate-700 text-slate-200 hover:bg-slate-600'"
+          >
+            이전
+          </button>
+
+          <div class="flex gap-1">
+            <button
+              v-for="page in pageNumbers"
+              :key="page"
+              @click="goToPage(page)"
+              class="min-w-[2rem] rounded px-3 py-1 text-sm font-medium transition-colors"
+              :class="page === currentPage
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-700 text-slate-200 hover:bg-slate-600'"
+            >
+              {{ page }}
+            </button>
+          </div>
+
+          <button
+            @click="goToPage(currentPage + 1)"
+            :disabled="currentPage === totalPages"
+            class="rounded px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            :class="currentPage === totalPages
+              ? 'bg-slate-800 text-slate-500'
+              : 'bg-slate-700 text-slate-200 hover:bg-slate-600'"
+          >
+            다음
+          </button>
         </div>
       </div>
     </div>
@@ -255,6 +294,10 @@ const toggling = ref(false)
 const cancelling = ref<number | null>(null)
 const error = ref<string | null>(null)
 
+// 페이지네이션 상태
+const currentPage = ref(1)
+const itemsPerPage = 10
+
 // 포맷터
 const formatKRW = (value: number) =>
   new Intl.NumberFormat('ko-KR', {
@@ -311,6 +354,50 @@ const profitColorClass = computed(() => {
   return balance.value.profit_loss >= 0 ? 'text-rose-400' : 'text-blue-400'
 })
 
+// 페이지네이션 computed
+const totalPages = computed(() => Math.ceil(orders.value.length / itemsPerPage))
+
+const paginatedOrders = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return orders.value.slice(start, end)
+})
+
+// 페이지 변경
+function goToPage(page: number) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+// 페이지 번호 배열 생성
+const pageNumbers = computed(() => {
+  const pages: number[] = []
+  const maxVisible = 5 // 표시할 최대 페이지 번호 개수
+
+  if (totalPages.value <= maxVisible) {
+    // 전체 페이지가 적으면 모두 표시
+    for (let i = 1; i <= totalPages.value; i++) {
+      pages.push(i)
+    }
+  } else {
+    // 현재 페이지를 중심으로 표시
+    let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
+    let end = Math.min(totalPages.value, start + maxVisible - 1)
+
+    // 끝에 도달하면 시작점 조정
+    if (end === totalPages.value) {
+      start = Math.max(1, end - maxVisible + 1)
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+  }
+
+  return pages
+})
+
 // 주문 상태 라벨
 function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
@@ -347,6 +434,7 @@ async function loadData() {
     balance.value = balanceData
     positions.value = positionsData
     orders.value = ordersData
+    currentPage.value = 1 // 데이터 새로고침 시 첫 페이지로
   } catch (e: any) {
     error.value = e.response?.data?.detail || '데이터를 불러올 수 없습니다'
   } finally {
