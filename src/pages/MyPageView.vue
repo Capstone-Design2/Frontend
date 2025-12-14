@@ -87,24 +87,34 @@
           <table class="min-w-full divide-y divide-slate-800">
             <thead class="bg-slate-900">
               <tr>
-                <th class="px-4 py-2 text-left text-sm font-semibold">종목 ID</th>
+                <th class="px-4 py-2 text-left text-sm font-semibold">종목</th>
                 <th class="px-4 py-2 text-right text-sm font-semibold">보유 수량</th>
                 <th class="px-4 py-2 text-right text-sm font-semibold">평균 매입가</th>
+                <th class="px-4 py-2 text-right text-sm font-semibold">현재가</th>
                 <th class="px-4 py-2 text-right text-sm font-semibold">평가액</th>
+                <th class="px-4 py-2 text-right text-sm font-semibold">손익</th>
+                <th class="px-4 py-2 text-right text-sm font-semibold">수익률</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800">
               <tr v-if="positions.length === 0">
-                <td colspan="4" class="px-4 py-8 text-center text-slate-400">
+                <td colspan="7" class="px-4 py-8 text-center text-slate-400">
                   보유 중인 포지션이 없습니다
                 </td>
               </tr>
               <tr v-for="pos in positions" :key="pos.position_id">
-                <td class="px-4 py-2 font-medium">종목 #{{ pos.ticker_id }}</td>
+                <td class="px-4 py-2 font-medium">
+                  {{ pos.ticker_code || `종목 #${pos.ticker_id}` }}
+                </td>
                 <td class="px-4 py-2 text-right tabular-nums">{{ formatQuantity(pos.quantity) }}</td>
                 <td class="px-4 py-2 text-right tabular-nums">{{ formatKRW(pos.average_buy_price) }}</td>
-                <td class="px-4 py-2 text-right tabular-nums">
-                  {{ formatKRW(pos.quantity * pos.average_buy_price) }}
+                <td class="px-4 py-2 text-right tabular-nums">{{ formatKRW(pos.current_price) }}</td>
+                <td class="px-4 py-2 text-right tabular-nums">{{ formatKRW(pos.position_value) }}</td>
+                <td class="px-4 py-2 text-right tabular-nums" :class="getProfitColor(pos.profit_loss)">
+                  {{ formatKRW(pos.profit_loss) }}
+                </td>
+                <td class="px-4 py-2 text-right tabular-nums font-medium" :class="getProfitColor(pos.profit_loss)">
+                  {{ formatPercent(pos.profit_loss_rate) }}
                 </td>
               </tr>
             </tbody>
@@ -135,7 +145,7 @@
               <tr v-if="orders.length === 0">
                 <td colspan="8" class="px-4 py-8 text-center text-slate-400">주문 내역이 없습니다</td>
               </tr>
-              <tr v-for="order in orders" :key="order.order_id">
+              <tr v-for="order in paginatedOrders" :key="order.order_id">
                 <td class="px-4 py-2 text-sm text-slate-400 tabular-nums">
                   {{ formatDateTime(order.submitted_at) }}
                 </td>
@@ -146,8 +156,8 @@
                     class="rounded px-2 py-0.5 text-xs font-medium"
                     :class="
                       order.side === 'BUY'
-                        ? 'bg-emerald-500/20 text-emerald-300'
-                        : 'bg-rose-500/20 text-rose-300'
+                        ? 'bg-red-500/20 text-red-300'
+                        : 'bg-blue-500/20 text-blue-300'
                     "
                   >
                     {{ order.side === 'BUY' ? '매수' : '매도' }}
@@ -179,6 +189,45 @@
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="flex items-center justify-center gap-2 border-t border-slate-800 px-4 py-4">
+          <button
+            @click="goToPage(currentPage - 1)"
+            :disabled="currentPage === 1"
+            class="rounded px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            :class="currentPage === 1
+              ? 'bg-slate-800 text-slate-500'
+              : 'bg-slate-700 text-slate-200 hover:bg-slate-600'"
+          >
+            이전
+          </button>
+
+          <div class="flex gap-1">
+            <button
+              v-for="page in pageNumbers"
+              :key="page"
+              @click="goToPage(page)"
+              class="min-w-[2rem] rounded px-3 py-1 text-sm font-medium transition-colors"
+              :class="page === currentPage
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-700 text-slate-200 hover:bg-slate-600'"
+            >
+              {{ page }}
+            </button>
+          </div>
+
+          <button
+            @click="goToPage(currentPage + 1)"
+            :disabled="currentPage === totalPages"
+            class="rounded px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            :class="currentPage === totalPages
+              ? 'bg-slate-800 text-slate-500'
+              : 'bg-slate-700 text-slate-200 hover:bg-slate-600'"
+          >
+            다음
+          </button>
         </div>
       </div>
     </div>
@@ -245,6 +294,10 @@ const toggling = ref(false)
 const cancelling = ref<number | null>(null)
 const error = ref<string | null>(null)
 
+// 페이지네이션 상태
+const currentPage = ref(1)
+const itemsPerPage = 10
+
 // 포맷터
 const formatKRW = (value: number) =>
   new Intl.NumberFormat('ko-KR', {
@@ -259,14 +312,27 @@ const formatQuantity = (value: number) =>
   }).format(value)
 
 const formatDateTime = (dateStr: string) => {
-  const date = new Date(dateStr)
+  // UTC 시간을 한국 시간(KST, UTC+9)으로 변환
+  const date = new Date(dateStr + 'Z') // 'Z'를 추가하여 UTC로 파싱
   return date.toLocaleString('ko-KR', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Asia/Seoul',
   })
+}
+
+const formatPercent = (value: number | null | undefined) => {
+  if (value === null || value === undefined) return '0.00%'
+  const sign = value >= 0 ? '+' : ''
+  return `${sign}${value.toFixed(2)}%`
+}
+
+const getProfitColor = (value: number | null | undefined) => {
+  if (value === null || value === undefined || value === 0) return 'text-slate-400'
+  return value > 0 ? 'text-red-400' : 'text-blue-400'
 }
 
 // 수익률 계산
@@ -285,7 +351,51 @@ const profitPrefix = computed(() => (balance.value && balance.value.profit_loss 
 
 const profitColorClass = computed(() => {
   if (!balance.value) return 'text-slate-200'
-  return balance.value.profit_loss >= 0 ? 'text-rose-400' : 'text-blue-400'
+  return balance.value.profit_loss >= 0 ? 'text-red-400' : 'text-blue-400'
+})
+
+// 페이지네이션 computed
+const totalPages = computed(() => Math.ceil(orders.value.length / itemsPerPage))
+
+const paginatedOrders = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return orders.value.slice(start, end)
+})
+
+// 페이지 변경
+function goToPage(page: number) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+// 페이지 번호 배열 생성
+const pageNumbers = computed(() => {
+  const pages: number[] = []
+  const maxVisible = 5 // 표시할 최대 페이지 번호 개수
+
+  if (totalPages.value <= maxVisible) {
+    // 전체 페이지가 적으면 모두 표시
+    for (let i = 1; i <= totalPages.value; i++) {
+      pages.push(i)
+    }
+  } else {
+    // 현재 페이지를 중심으로 표시
+    let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
+    let end = Math.min(totalPages.value, start + maxVisible - 1)
+
+    // 끝에 도달하면 시작점 조정
+    if (end === totalPages.value) {
+      start = Math.max(1, end - maxVisible + 1)
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+  }
+
+  return pages
 })
 
 // 주문 상태 라벨
@@ -324,6 +434,7 @@ async function loadData() {
     balance.value = balanceData
     positions.value = positionsData
     orders.value = ordersData
+    currentPage.value = 1 // 데이터 새로고침 시 첫 페이지로
   } catch (e: any) {
     error.value = e.response?.data?.detail || '데이터를 불러올 수 없습니다'
   } finally {

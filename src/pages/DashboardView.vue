@@ -161,11 +161,11 @@ const changePctLabel = computed(() =>
 
 const priceColorClass = computed(() => {
   if (change.value == null) return 'text-slate-200'
-  return change.value >= 0 ? 'text-emerald-400' : 'text-rose-400'
+  return change.value >= 0 ? 'text-red-400' : 'text-blue-400'
 })
 const chipColorClass = computed(() => {
   if (change.value == null) return 'bg-slate-700 text-slate-200'
-  return change.value >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+  return change.value >= 0 ? 'bg-red-500/20 text-red-300' : 'bg-blue-500/20 text-blue-300'
 })
 
 // ---- WebSocket 연결 상태

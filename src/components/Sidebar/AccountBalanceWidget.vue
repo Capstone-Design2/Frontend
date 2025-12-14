@@ -98,7 +98,7 @@ const profitPrefix = computed(() => (balance.value && balance.value.profit_loss 
 
 const profitColorClass = computed(() => {
   if (!balance.value) return 'text-slate-200'
-  return balance.value.profit_loss >= 0 ? 'text-rose-400' : 'text-blue-400'
+  return balance.value.profit_loss >= 0 ? 'text-red-400' : 'text-blue-400'
 })
 
 async function refresh() {
