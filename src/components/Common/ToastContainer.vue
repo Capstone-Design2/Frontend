@@ -14,7 +14,7 @@
         :key="toast.id"
         :class="[
           'pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5',
-          toast.type === 'success' ? 'bg-green-800/80' : 'bg-red-800/80',
+          getToastColor(toast.type),
         ]"
       >
         <div class="p-4">
@@ -42,4 +42,19 @@
 import { useUiStore } from '@/stores/useUiStore'
 
 const ui = useUiStore()
+
+function getToastColor(type?: string) {
+  switch (type) {
+    case 'buy':
+      return 'bg-red-800/80'
+    case 'sell':
+      return 'bg-blue-800/80'
+    case 'success':
+      return 'bg-green-800/80'
+    case 'error':
+      return 'bg-red-800/80'
+    default:
+      return 'bg-gray-800/80'
+  }
+}
 </script>

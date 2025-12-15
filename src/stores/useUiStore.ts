@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-export interface Toast { id: string; message: string; type?: 'info'|'success'|'error'; timeout?: number }
+export interface Toast { id: string; message: string; type?: 'info'|'success'|'error'|'buy'|'sell'; timeout?: number }
 
 export const useUiStore = defineStore('ui', {
   state: () => ({
