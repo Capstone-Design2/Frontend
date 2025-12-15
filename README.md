@@ -13,10 +13,7 @@ CAPSLOCK 프론트엔드는 **Vue 3 + TypeScript + Vite** 기반으로 구축된
 ```
 src/
 ├── assets/                  # 정적 리소스 (아이콘, 전역 CSS 등)
-│   ├── icons/
-│   │   └── chat.svg
-│   ├── base.css
-│   └── main.css
+│   └── icons/chat.svg
 │
 ├── components/              # UI 컴포넌트 (도메인 기반)
 │   ├── Chart/
@@ -26,7 +23,9 @@ src/
 │   ├── Chat/
 │   │   ├── ActiveChatView.vue
 │   │   ├── ChatPanel.vue
-│   │   └── EmptyChatView.vue
+│   │   ├── EmptyChatView.vue
+│   │   ├── MessageInput.vue
+│   │   └── MessageList.vue
 │   ├── Common/
 │   │   ├── AppNavbar.vue
 │   │   ├── EmptyState.vue
@@ -40,6 +39,9 @@ src/
 │   │   ├── PositionsWidget.vue
 │   │   └── TradeWidget.vue
 │   └── Strategy/
+│       ├── ConditionGroup.vue
+│       ├── ConditionList.vue
+│       ├── FlowList.vue
 │       └── RuleBuilder.vue
 │
 ├── pages/                   # 라우트 기반 페이지
@@ -64,6 +66,7 @@ src/
 ├── services/                # API & 도메인 서비스 계층
 │   ├── strategy/strategyApi.ts
 │   ├── authApi.ts
+│   ├── backtestApi.ts
 │   ├── http.ts
 │   ├── marketApi.ts
 │   ├── marketIntraday.ts
@@ -88,7 +91,7 @@ src/
 │
 ├── utils/                   # 유틸리티 함수
 │   ├── indicators.ts
-│   ├── strategyForm.ts
+│   ├── strategyValidator.ts
 │   └── validation.ts
 │
 ├── App.vue
