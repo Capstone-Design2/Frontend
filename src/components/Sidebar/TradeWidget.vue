@@ -85,7 +85,7 @@ async function handleTrade(type: 'buy' | 'sell') {
     })
 
     uiStore.pushToast({
-      type: 'success',
+      type: type,
       message: `${type === 'buy' ? '매수' : '매도'} 주문이 제출되었습니다 (주문 ID: ${order.order_id})`,
     })
 
