@@ -13,10 +13,7 @@ CAPSLOCK 프론트엔드는 **Vue 3 + TypeScript + Vite** 기반으로 구축된
 ```
 src/
 ├── assets/                  # 정적 리소스 (아이콘, 전역 CSS 등)
-│   ├── icons/
-│   │   └── chat.svg
-│   ├── base.css
-│   └── main.css
+│   └── icons/chat.svg
 │
 ├── components/              # UI 컴포넌트 (도메인 기반)
 │   ├── Chart/
@@ -26,7 +23,9 @@ src/
 │   ├── Chat/
 │   │   ├── ActiveChatView.vue
 │   │   ├── ChatPanel.vue
-│   │   └── EmptyChatView.vue
+│   │   ├── EmptyChatView.vue
+│   │   ├── MessageInput.vue
+│   │   └── MessageList.vue
 │   ├── Common/
 │   │   ├── AppNavbar.vue
 │   │   ├── EmptyState.vue
@@ -40,6 +39,9 @@ src/
 │   │   ├── PositionsWidget.vue
 │   │   └── TradeWidget.vue
 │   └── Strategy/
+│       ├── ConditionGroup.vue
+│       ├── ConditionList.vue
+│       ├── FlowList.vue
 │       └── RuleBuilder.vue
 │
 ├── pages/                   # 라우트 기반 페이지
@@ -64,6 +66,7 @@ src/
 ├── services/                # API & 도메인 서비스 계층
 │   ├── strategy/strategyApi.ts
 │   ├── authApi.ts
+│   ├── backtestApi.ts
 │   ├── http.ts
 │   ├── marketApi.ts
 │   ├── marketIntraday.ts
@@ -88,7 +91,7 @@ src/
 │
 ├── utils/                   # 유틸리티 함수
 │   ├── indicators.ts
-│   ├── strategyForm.ts
+│   ├── strategyValidator.ts
 │   └── validation.ts
 │
 ├── App.vue
@@ -112,7 +115,11 @@ tests/                       # Vitest 기반 단위 테스트
 * Lightweight Charts 기반 고성능 차트
 * OverlayCanvas로 실시간 오버레이 지원
 * 차트 툴바 (`ChartToolbar.vue`) 제공
-* WebSocket 기반 가격 스트림 (`services/websocket.ts`)
+* WebSocket 기반 실시간 가격 스트림
+  - 구독/해제 관리
+  - reconnect 및 heartbeat 처리
+  - Pinia Store 연동
+
 
 ## 🔍 2. 종목/시세/심볼 관리
 
@@ -121,16 +128,21 @@ tests/                       # Vitest 기반 단위 테스트
 
 ## 🧩 3. 전략 생성 & 규칙 빌더
 
-* Rule Builder UI (`RuleBuilder.vue`)
+* 선언적 Rule Builder UI
+  - 조건 그룹 (AND / OR)
+  - 중첩 조건 지원
+  - Flow 기반 전략 구성
 * 전략 CRUD (`strategyApi.ts`)
-* 전략 Form Utils (`strategyForm.ts`)
+* 프론트 단에서 전략 구조 유효성 검증 (`strategyValidator.ts`)
 * 전략 타입 분리 (`types/Strategy.ts`)
 
 ## 📈 4. 백테스팅 모듈
 
 * 실행(런), 결과, 히스토리 페이지 제공
 * SMA·RSI 등 기술 지표 (`indicators.ts`)
-* 결과 및 전략 기반 검증 로직
+* 백엔드 연산 결과 시각화
+* 프론트 단 결과 요약 및 메트릭 렌더링
+
 
 ## 🧪 5. 모의투자 / 포트폴리오
 
@@ -144,7 +156,7 @@ tests/                       # Vitest 기반 단위 테스트
 * ProtectedView를 통한 라우트 보호
 * JWT 기반 헤더 자동 부착 (`http.ts`)
 
-## 🎨 7. Tailwind 기반 반응형 UI
+## 🎨 7. 유틸리티 클래스 기반 반응형 UI
 
 * Navbar / Sidebar / Toast 시스템
 * 모달/알림/공통 컴포넌트 포함
@@ -166,6 +178,7 @@ npm install
 ```
 API_BASE_URL=YOUR_API_URL
 ```
+⚠️ `.env` 파일은 Git에 커밋하지 마세요.
 
 ### 3. 개발 서버 실행
 
